@@ -20,6 +20,11 @@ SOURCES += \
     ImageProcess/cv_stereomatcher.cpp \
     ImageProcess/image_processing.cpp \
     ImageProcess/imghdr.cpp \
+    RKNN/rknn_inferencer.cpp \
+    RKNN/utils/drawing.cpp \
+    RKNN/utils/mpp_decoder.cpp \
+    RKNN/utils/mpp_encoder.cpp \
+    RKNN/utils/postprocess.cc \
     main.cpp \
     mainwindow.cpp \
     pictureview.cpp
@@ -29,6 +34,11 @@ HEADERS += \
     ImageProcess/cv_stereomatcher.h \
     ImageProcess/image_processing.h \
     ImageProcess/imghdr.h \
+    RKNN/rknn_inferencer.h \
+    RKNN/utils/drawing.h \
+    RKNN/utils/mpp_decoder.h \
+    RKNN/utils/mpp_encoder.h \
+    RKNN/utils/postprocess.h \
     mainwindow.h \
     pictureview.h
 
@@ -49,4 +59,20 @@ unix: PKGCONFIG += opencv4 \
                    libavutil \
                    libswresample \
                    libswscale
+
+#unix:!macx: LIBS += -L$$PWD/../3rdparty/mpp/Linux/aarch64/ -lrockchip_mpp \
+#                    -L$$PWD/../3rdparty/rga/RK3588/lib/Linux/aarch64/ -lrga \
+#                    -L$$PWD/../3rdparty/zlmediakit/aarch64/ -lmk_api
+
+unix:!macx: LIBS += -L/home/toybrick/Works/lib/ -lrockchip_mpp \
+                    -L/home/toybrick/Works/lib/ -lrga \
+                    -L/home/toybrick/Works/lib/ -lmk_api \
+                    -L/home/toybrick/Works/lib/ -lrknnrt
+
+INCLUDEPATH += $$PWD/../3rdparty/mpp/include \
+               $$PWD/../3rdparty/rga/RK3588/include \
+               $$PWD/../3rdparty/zlmediakit/include
+DEPENDPATH += $$PWD/../3rdparty/mpp/include \
+              $$PWD/../3rdparty/rga/RK3588/include \
+              $$PWD/../3rdparty/zlmediakit/include
 

@@ -15,8 +15,6 @@ imgHDR::~imgHDR()
     mat4derivate_r3c1.release();
     coffMat_cu.release();
     coffMatC2_cu.release();
-    fltDX_cu.release();
-    fltDY_cu.release();
 }
 
 void imgHDR::create_coff_mat()
@@ -78,26 +76,6 @@ void imgHDR::create_coff_mat()
     transpose(mat4derivate_r3c1,mat4derivate_r1c3);
 }
 
-void imgHDR::create_coff_mat_cu()
-{
-    cuda::printCudaDeviceInfo(cuda::getDevice());
-    int count = cuda::getCudaEnabledDeviceCount();
-    if (count > 0)
-        cout<<"GPU Device Count: "<<count<<endl;
-    else
-        return;
-
-    create_coff_mat();
-    coffMat_cu.upload(coffMat);
-    coffMatC2=Mat(Size(coffMat.cols,coffMat.rows),CV_32FC2);
-    insertChannel(coffMat,coffMatC2,0);
-    insertChannel(coffMat,coffMatC2,1);
-    coffMatC2_cu.upload(coffMatC2);
-
-    fltDX_cu=cuda::createDerivFilter(CV_32FC1,CV_32FC1,1,0,1);
-    fltDY_cu=cuda::createDerivFilter(CV_32FC1,CV_32FC1,0,1,1);
-}
-
 Mat imgHDR::hdr2GrayImgs(Mat img_src_bright, Mat img_src_dark)
 {
     hdrTimer.start();
@@ -149,37 +127,6 @@ Mat imgHDR::hdr1GrayImgs(Mat img)
         hdrTimer.nsecsElapsed()/1000000<<endl;
     return img_hdr;
 
-}
-
-Mat imgHDR::hdr2GrayImgs_cu(Mat img_src_bright, Mat img_src_dark)
-{
-    hdrTimer.start();
-    if (img_src_bright.size!=img_src_dark.size)
-        return Mat();
-
-    Mat img_hdr = Mat(Size(img_src_bright.cols,img_src_bright.rows),CV_32FC1);
-
-    Mat Max_X,Max_Y;
-    if(img_src_bright.channels()>1)
-    {
-        cvtColor(img_src_bright,Max_X,COLOR_BGR2GRAY);
-        cvtColor(img_src_dark,Max_Y,COLOR_BGR2GRAY);
-    }
-    Max_X.convertTo(Max_X,CV_32F);
-    Max_Y.convertTo(Max_Y,CV_32F);
-
-    cuda::GpuMat maxX_cu,maxY_cu;
-    maxX_cu.upload(Max_X);
-    maxY_cu.upload(Max_Y);
-
-    //获取最大梯度图像
-    maxDerivation_cu(maxX_cu,maxY_cu,maxX_cu,maxY_cu);
-
-    //从最大梯度图像重建原图像
-    img_hdr=solvingPossion_cu(maxX_cu,maxY_cu);
-    cout<<"Time of 2 Images HDR(ms) on GPU: "<<
-        hdrTimer.nsecsElapsed()/1000000<<endl;
-    return img_hdr;
 }
 
 void imgHDR::get_max_derivation(Mat bright_img, Mat dark_img, Mat &max_derivativeX, Mat &max_derivativeY)
@@ -247,63 +194,6 @@ void imgHDR::enhanceDerivation(Mat img, Mat &max_derivativeX, Mat &max_derivativ
     filter2D(img,max_derivativeX, -1,mat4derivate_r1c3);
 }
 
-void imgHDR::maxDerivation_cu(cuda::GpuMat bright_img, cuda::GpuMat dark_img,
-                              cuda::GpuMat &max_derivativeX, cuda::GpuMat &max_derivativeY)
-{
-    max_derivativeX = bright_img.clone();
-    max_derivativeY = dark_img.clone();
-    if (bright_img.size() != dark_img.size())
-        return;
-
-    cuda::GpuMat derivativeY_bright = bright_img.clone();
-    cuda::GpuMat derivativeX_bright = bright_img.clone();
-    cuda::GpuMat derivativeY_dark = dark_img.clone();
-    cuda::GpuMat derivativeX_dark = dark_img.clone();
-
-    fltDY_cu->apply(bright_img,derivativeY_bright);
-    fltDY_cu->apply(dark_img, derivativeY_dark);
-    fltDX_cu->apply(bright_img,derivativeX_bright);
-    fltDX_cu->apply(dark_img, derivativeX_dark);
-
-    cuda::GpuMat derivativeY_bright_abs = derivativeY_bright.clone();
-    cuda::GpuMat derivativeX_bright_abs = derivativeX_bright.clone();
-    cuda::GpuMat derivativeY_dark_abs = derivativeY_dark.clone();
-    cuda::GpuMat derivativeX_dark_abs = derivativeX_dark.clone();
-
-    cuda::abs(derivativeX_bright_abs, derivativeX_bright_abs);
-    cuda::abs(derivativeY_bright_abs, derivativeY_bright_abs);
-    cuda::abs(derivativeX_dark_abs, derivativeX_dark_abs);
-    cuda::abs(derivativeY_dark_abs, derivativeY_dark_abs);
-
-    cuda::GpuMat Max_X = derivativeX_bright_abs.clone(), Max_Y = derivativeY_bright_abs.clone();
-    cuda::compare(derivativeX_bright_abs, derivativeX_dark_abs, Max_X,CMP_GE);
-    cuda::compare(derivativeY_bright_abs, derivativeY_dark_abs, Max_Y,CMP_GE);
-
-    Max_X.convertTo(Max_X,CV_32F);
-    cuda::multiply(derivativeX_bright, Max_X, derivativeX_bright, 1.0f / 255.0f);
-    cuda::threshold(Max_X, Max_X, 100, 255,THRESH_BINARY_INV);
-    cuda::multiply(derivativeX_dark, Max_X, derivativeX_dark, 1.0f / 255.0f);
-    cuda::add(derivativeX_bright, derivativeX_dark, Max_X);
-
-    Max_Y.convertTo(Max_Y, CV_32F);
-    cuda::multiply(derivativeY_bright, Max_Y, derivativeY_bright, 1.0f / 255.0f);
-    cuda::threshold(Max_Y, Max_Y, 100, 255, THRESH_BINARY_INV);
-    cuda::multiply(derivativeY_dark, Max_Y, derivativeY_dark, 1.0f / 255.0f);
-    cuda::add(derivativeY_bright, derivativeY_dark, Max_Y);
-
-    derivativeX_bright_abs.release();
-    derivativeX_dark_abs.release();
-    derivativeY_bright_abs.release();
-    derivativeY_dark_abs.release();
-
-    derivativeX_bright.release();
-    derivativeX_dark.release();
-    derivativeY_bright.release();
-    derivativeY_dark.release();
-
-    max_derivativeX = Max_X; max_derivativeY = Max_Y;
-}
-
 Mat imgHDR::second_method_solving_Possion(Mat derivativeX, Mat derivativeY)
 {
     if (derivativeX.size != derivativeY.size
@@ -346,38 +236,6 @@ Mat imgHDR::second_method_solving_Possion(Mat derivativeX, Mat derivativeY)
 
     dft(div_v, div_v, DFT_INVERSE);
     extractChannel(div_v, solution_equation, 0);
-
-    temp_dx.release();
-    temp_dy.release();
-    div_v.release();
-
-    return solution_equation;
-}
-
-Mat imgHDR::solvingPossion_cu(cuda::GpuMat derivativeX, cuda::GpuMat derivativeY)
-{
-    if (derivativeX.size() != derivativeY.size()
-        || derivativeX.depth() != derivativeY.depth()
-        || derivativeX.channels() != derivativeY.channels())
-        return Mat();
-
-    Mat solution_equation;
-    cuda::GpuMat div_v = cuda::GpuMat(coffMat_cu.size(),CV_32FC2);
-    cuda::GpuMat temp_dx=cuda::GpuMat(coffMat_cu.size(),CV_32FC1);
-    cuda::GpuMat temp_dy=cuda::GpuMat(coffMat_cu.size(),CV_32FC1);
-
-    fltDY_cu->apply(derivativeY,temp_dy);
-    fltDX_cu->apply(derivativeX,temp_dx);
-    cuda::add(temp_dx, temp_dy, temp_dx);
-    temp_dy.setTo(Scalar(0));
-
-    cuda::GpuMat temp_dxdy[2]={temp_dx,temp_dy};
-    cuda::merge(temp_dxdy,2,div_v);
-    cuda::dft(div_v,div_v,coffMat_cu.size());
-    cuda::multiply(div_v,coffMatC2_cu,div_v);
-    cuda::dft(div_v,div_v,coffMat_cu.size(),DFT_INVERSE);
-    cuda::split(div_v,temp_dxdy);
-    temp_dxdy[0].download(solution_equation);
 
     temp_dx.release();
     temp_dy.release();

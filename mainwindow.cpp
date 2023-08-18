@@ -10,6 +10,11 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     isDetecting = false;
 
+    //RKNN Ini
+    rknnInfer=new RKNN_INFERENCER;
+//    connect(imgProcess_main,&Image_Processing_Class::outputImgProcessedRequest,
+//            this,&MainWindow::on_imageboxes_refresh);
+
     //图像处理类初始化
     initImageProcess();
 
@@ -161,7 +166,8 @@ void MainWindow::initVideoPlayers()
 {
     isCapturing1=false;isCapturing2=false;
     mPlayer1 = new VideoPlayer;
-    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h265/ch1/main/av_stream");
+//    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h265/ch1/main/av_stream");
+    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream");
     mPlayer1->videoURL = urls[0];
     mPlayer2 = new VideoPlayer;
 //    mPlayer2->videoURL = urls[1];
@@ -642,7 +648,13 @@ void MainWindow::on_textSavingCount_textChanged()
 }
 
 void MainWindow::on_buttonStartCapture_clicked()
-{
+{  
+    char *input[]={"","model/RK3588/yolov5s-640-640.rknn",
+                  "rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream",
+                  "264"};
+    rknnInfer->full_test(4,input);
+    return;
+
     if(ui->buttonStartCapture->text()=="StartCapture" && isCapturing1==false && isCapturing2 == false)
     {
         isCapturing1=true;

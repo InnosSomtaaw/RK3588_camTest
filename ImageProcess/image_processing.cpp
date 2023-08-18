@@ -69,8 +69,7 @@ void Image_Processing_Class::hdr2Imgs(bool onGPU)
                                CV_32FC1);
         if(!onGPU)
             hdrProc->create_coff_mat();
-        else
-            hdrProc->create_coff_mat_cu();
+
         hdrProc->hasInitialized=true;
         cout<<"Time of coefficient initialization(ms): "<<
             ustimer.nsecsElapsed()/1000000<<endl;
@@ -78,8 +77,6 @@ void Image_Processing_Class::hdr2Imgs(bool onGPU)
 
     if(!onGPU)
         img_output3=hdrProc->hdr2GrayImgs(img_output1,img_output2);
-    else
-        img_output3=hdrProc->hdr2GrayImgs_cu(img_output1,img_output2);
 
     double minGray,maxGray;
     minMaxLoc(img_output3,&minGray,&maxGray);
@@ -130,8 +127,7 @@ void Image_Processing_Class::hdrImg(bool onGPU)
                                CV_32FC1);
         if(!onGPU)
             hdrProc->create_coff_mat();
-        else
-            hdrProc->create_coff_mat_cu();
+
         hdrProc->hasInitialized=true;
         cout<<"Time of coefficient initialization(ms): "<<
             ustimer.nsecsElapsed()/1000000<<endl;

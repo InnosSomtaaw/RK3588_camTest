@@ -7,9 +7,10 @@
 
 #include "ImageProcess/image_processing.h"
 #include "Camera/videoplayer.h"
-//#include "Camera/cameraDAHUA.h"
+#include "RKNN/rknn_inferencer.h"
+
 //#include "pictureview.h"
-//#include <opencv2/opencv.hpp>
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow;}
@@ -136,8 +137,13 @@ private:
     WorkConditionsEnum workCond;
     QSettings *iniRW;
 
+    //RKNN
+    RKNN_INFERENCER *rknnInfer;
+
     //图像处理类
     Image_Processing_Class *imgProcess_main;
+    //图像处理线程
+    QThread *m_imgprocsThread;
 
     //数字相机类（rtsp读取）
     VideoPlayer *mPlayer1;                  //播放线程
@@ -145,8 +151,7 @@ private:
     //数字相机类（硬盘录像机）
 //    cameraDAHUA *mNVR;
 
-    //图像处理线程
-    QThread *m_imgprocsThread;
+
 
     //NVR处理线程
 //    QThread *mNvrThread;
