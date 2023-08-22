@@ -2,6 +2,7 @@
 #define RKNN_INFERENCER_H
 
 #include <QObject>
+#include <QImage>
 
 #include <dlfcn.h>
 #include <stdio.h>
@@ -24,36 +25,43 @@
 #include "mk_mediakit.h"
 #endif
 
+#include <Camera/videoplayer.h>
+#include <opencv2/opencv.hpp>
+using namespace cv;
+
 #define OUT_VIDEO_PATH "out.h264"
+
+typedef struct {
+  rknn_context rknn_ctx;
+  rknn_input_output_num io_num;
+  rknn_tensor_attr* input_attrs;
+  rknn_tensor_attr* output_attrs;
+  int model_channel;
+  int model_width;
+  int model_height;
+  FILE* out_fp;
+  MppDecoder* decoder;
+  MppEncoder* encoder;
+} rknn_app_context_t;
+
+typedef struct {
+  int width;
+  int height;
+  int width_stride;
+  int height_stride;
+  int format;
+  char* virt_addr;
+  int fd;
+} image_frame_t;
 
 class RKNN_INFERENCER : public QObject
 {
     Q_OBJECT
 public:
-    typedef struct {
-      rknn_context rknn_ctx;
-      rknn_input_output_num io_num;
-      rknn_tensor_attr* input_attrs;
-      rknn_tensor_attr* output_attrs;
-      int model_channel;
-      int model_width;
-      int model_height;
-      FILE* out_fp;
-      MppDecoder* decoder;
-      MppEncoder* encoder;
-    } rknn_app_context_t;
-
-    typedef struct {
-      int width;
-      int height;
-      int width_stride;
-      int height_stride;
-      int format;
-      char* virt_addr;
-      int fd;
-    } image_frame_t;
-
     explicit RKNN_INFERENCER(QObject *parent = nullptr);
+
+    rknn_app_context_t* ctx;
+    image_frame_t img;
 
     static void dump_tensor_attr(rknn_tensor_attr *attr);
     double __get_us(timeval t);
@@ -64,11 +72,12 @@ public:
     static int release_model(rknn_app_context_t *app_ctx);
     static int inference_model(rknn_app_context_t *app_ctx, image_frame_t *img, detect_result_group_t *detect_result);
     int process_video_file(rknn_app_context_t *ctx, const char *path);
+
     int full_test(int argc, char **argv);
     int process_video_rtsp(rknn_app_context_t *ctx, const char *url);
-signals:
 
 };
+
 
 void mpp_decoder_frame_callback(void *userdata, int width_stride, int height_stride, int width, int height, int format, int fd, void *data);
 void API_CALL on_track_frame_out(void *user_data, mk_frame frame);

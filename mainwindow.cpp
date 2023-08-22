@@ -8,13 +8,11 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    //显示窗体初始化
+    initImageBoxes();
+
     isDetecting = false;
-
-    //RKNN Ini
-    rknnInfer=new RKNN_INFERENCER;
-//    connect(imgProcess_main,&Image_Processing_Class::outputImgProcessedRequest,
-//            this,&MainWindow::on_imageboxes_refresh);
-
     //图像处理类初始化
     initImageProcess();
 
@@ -27,31 +25,17 @@ MainWindow::MainWindow(QWidget *parent)
     //初始化输入输出图像列表
     initImageInOuts();
 
-    //显示窗体初始化
-    initImageBoxes();
-
     //默认AI路径初始化
 //    initDefaultAIPaths();
 
-    //数字相机类初始化（硬盘录像机读取）
-//    mNVR = new cameraDAHUA;
-//    nvrIP = "10.11.151.52";
-//    nvrPort = 37777;
-//    camUserName = "admin";
-//    camPassWord = "Astro123";
-//    mNvrThread = new QThread();
-//    mNVR->moveToThread(mNvrThread);
-//    mNvrThread->start();
+    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream");
+    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h265/ch1/main/av_stream");
 
     //数字相机类初始化（rtsp读取）
     initVideoPlayers();
 
-//    mNVR->cameraLogin(nvrIP,nvrPort,camUserName,camPassWord);
-//    mNVR->camerasGetConfig();
-//    mNVR->imgboxHandle[40]=HWND(ui->imagebox4->winId());
-//    mNVR->imgboxHandle[41]=HWND(ui->imagebox2->winId());
-//    mNVR->imgboxHandle[42]=HWND(ui->imagebox3->winId());
-//    mNVR->imgboxHandle[43]=HWND(ui->imagebox1->winId());
+    //RKNN类初始化
+    rknnInfer=new RKNN_INFERENCER;
 
     //文本输出初始化
     initTextBrowsers();
@@ -164,14 +148,35 @@ void MainWindow::initImageProcess()
 
 void MainWindow::initVideoPlayers()
 {
-    isCapturing1=false;isCapturing2=false;
-    mPlayer1 = new VideoPlayer;
-//    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h265/ch1/main/av_stream");
-    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream");
-    mPlayer1->videoURL = urls[0];
-    mPlayer2 = new VideoPlayer;
+    isCapturing1=false;
+    isCapturing2=false;
+
+    //数字相机类初始化（mpp读取）
+    mppPlayer1=new MPP_PLAYER;
+    mppPlayer1->videoURL = urls[0];
+    mppPlayer1->video_type=264;
+    connect(mppPlayer1,&MPP_PLAYER::sig_GetOneFrame,
+            this,&MainWindow::slotGetOneFrame1);
+    rknnThread1 = new QThread();
+    mppPlayer1->moveToThread(rknnThread1);
+    rknnThread1->start();
+    mppPlayer2=new MPP_PLAYER;
+    mppPlayer2->videoURL = urls[1];
+    mppPlayer2->video_type=265;
+    connect(mppPlayer2,&MPP_PLAYER::sig_GetOneFrame,
+            this,&MainWindow::slotGetOneFrame2);
+    rknnThread2 = new QThread();
+    mppPlayer2->moveToThread(rknnThread2);
+    rknnThread2->start();
+
+//    mPlayer1 = new VideoPlayer;
+//    mPlayer1->videoURL = urls[0];
+//    mPlayer2 = new VideoPlayer;
 //    mPlayer2->videoURL = urls[1];
-    connectCamera();
+//    connect(mPlayer1,SIGNAL(sig_GetOneFrame(QImage)),
+//            this,SLOT(slotGetOneFrame1(QImage)));
+//    connect(mPlayer2, SIGNAL(sig_GetOneFrame(QImage)),
+//            this, SLOT(slotGetOneFrame2(QImage)));
 }
 
 void MainWindow::initBaseSettings()
@@ -498,19 +503,6 @@ void MainWindow::connectImgBox()
             this,&MainWindow::on_imagebox2_OpenImage);
 }
 
-void MainWindow::connectCamera()
-{
-    connect(mPlayer1,SIGNAL(sig_GetOneFrame(QImage)),
-            this,SLOT(slotGetOneFrame1(QImage)));
-    connect(mPlayer2, SIGNAL(sig_GetOneFrame(QImage)),
-            this, SLOT(slotGetOneFrame2(QImage)));
-
-//    connect(mNVR,&cameraDAHUA::sigGetOneFrame1,
-//            this,&MainWindow::slotGetOneFrame1);
-//    connect(mNVR,&cameraDAHUA::sigGetOneFrame2,
-//            this,&MainWindow::slotGetOneFrame2);
-}
-
 //void MainWindow::on_buttonOpenVideo_clicked()
 //{
 //    if(ui->buttonOpenVideo->text()=="OpenVideo" && isCapturing1s[0]==false)
@@ -621,9 +613,9 @@ void MainWindow::on_buttonReset_clicked()
     isCapturing1=false;
     isCapturing2=false;
     printf("reset clicked!");
-    mPlayer1->isCapturing = isCapturing1;
+//    mPlayer1->isCapturing = isCapturing1;
 //    mPlayer1->videoURL = urls[0];
-    mPlayer2->isCapturing = isCapturing2;
+//    mPlayer2->isCapturing = isCapturing2;
 //    mPlayer2->videoURL = urls[1];
 
     ui->buttonOpenImgList->setText("OpenImgList");
@@ -649,20 +641,28 @@ void MainWindow::on_textSavingCount_textChanged()
 
 void MainWindow::on_buttonStartCapture_clicked()
 {  
-    char *input[]={"","model/RK3588/yolov5s-640-640.rknn",
-                  "rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream",
-                  "264"};
-    rknnInfer->full_test(4,input);
-    return;
+//    isCapturing1=true;
+//    char *input[]={"","./model/RK3588/yolov5s-640-640.rknn",
+//                  "rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream",
+//                  "264"};
+//    rknnInfer->full_test(4,input);
+//    return;
 
-    if(ui->buttonStartCapture->text()=="StartCapture" && isCapturing1==false && isCapturing2 == false)
+    if(ui->buttonStartCapture->text()=="StartCapture")
     {
         isCapturing1=true;
         isCapturing2=true;
         ui->buttonStartCapture->setText("StopCapture");
 
-        mPlayer1->isCapturing = isCapturing1;
-        mPlayer1->startPlay();
+        if(!mppPlayer1->hasStarted)
+            mppPlayer1->startPlay();
+        else
+            mppPlayer1->mppMutex.unlock();
+
+//        mppPlayer2->startPlay();
+
+//        mPlayer1->isCapturing = isCapturing1;
+//        mPlayer1->startPlay();
 //        mPlayer2->isCapturing1 = isCapturing1s[1];
 //        mPlayer2->startPlay();
 
@@ -671,19 +671,17 @@ void MainWindow::on_buttonStartCapture_clicked()
 
         ui->editCheckBox->setEnabled(false);
     }
-    else if(ui->buttonStartCapture->text()=="StopCapture"/* && isCapturing1s[0]&& isCapturing2&& isCapturing13 && isCapturing14*/)
+    else if(ui->buttonStartCapture->text()=="StopCapture")
     {
         isCapturing1=false;
         isCapturing2=false;
 
         ui->buttonStartCapture->setText("StartCapture");
 
-        mPlayer1->isCapturing = isCapturing1;
+        mppPlayer1->mppMutex.lock();
+//        mppPlayer2->mppMutex.lock();
+//        mPlayer1->isCapturing = isCapturing1;
 //        mPlayer2->isCapturing1 = isCapturing1s[1];
-
-//        mNVR->isCapturing1=isCapturing1s[0];
-//        for(int i=40;i<44;i++)
-//            mNVR->cameraStopPlay(i);
 
         if((!imgProcess_main->img_inputs[0].empty())&(!imgProcess_main->img_inputs[2].empty()))
         {
@@ -816,15 +814,6 @@ void MainWindow::requestProcess(QImage img, int i)
 
 void MainWindow::slotGetOneFrame1(QImage img)
 {
-//    ws[0]=img.width();hs[0]=img.height();
-//    if(mPlayer1->hasFinished)
-//    {
-//        isCapturing1s[0] = false;
-//        mPlayer1->isCapturing1 = isCapturing1s[0];
-////        ui->buttonOpenVideo->setText("OpenVideo");
-//        return;
-//    }
-
     if(isCapturing1 && !isDetecting)
     {
         //窗体1显示
@@ -842,15 +831,6 @@ void MainWindow::slotGetOneFrame1(QImage img)
 
 void MainWindow::slotGetOneFrame2(QImage img)
 {
-    ws[1]=img.width(); hs[1]=img.height();
-//    if(mPlayer2->hasFinished)
-//    {
-//        isCapturing1s[1] = false;
-//        mPlayer2->isCapturing1 = isCapturing1s[1];
-////        ui->buttonOpenVideo->setText("OpenVideo");
-//        return;
-//    }
-
     if(isCapturing2 && !isDetecting)
     {
         //窗体2显示

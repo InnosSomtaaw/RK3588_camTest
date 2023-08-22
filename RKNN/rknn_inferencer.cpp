@@ -2,7 +2,7 @@
 
 RKNN_INFERENCER::RKNN_INFERENCER(QObject *parent) : QObject(parent)
 {
-
+    img=image_frame_t();
 }
 
 void RKNN_INFERENCER::dump_tensor_attr(rknn_tensor_attr* attr)
@@ -254,10 +254,9 @@ int RKNN_INFERENCER::inference_model(rknn_app_context_t* app_ctx, image_frame_t*
   return 0;
 }
 
-void mpp_decoder_frame_callback(void* userdata, int width_stride, int height_stride, int width, int height, int format, int fd, void* data) {
-
-  RKNN_INFERENCER::rknn_app_context_t* ctx = (RKNN_INFERENCER::rknn_app_context_t*)userdata;
-
+void mpp_decoder_frame_callback(void* userdata, int width_stride, int height_stride, int width, int height, int format, int fd, void* data)
+{
+  rknn_app_context_t* ctx = (rknn_app_context_t*)userdata;
   int ret = 0;
   static int frame_index = 0;
   frame_index++;
@@ -279,6 +278,7 @@ void mpp_decoder_frame_callback(void* userdata, int width_stride, int height_str
     enc_params.hor_stride = width_stride;
     enc_params.ver_stride = height_stride;
     enc_params.fmt = MPP_FMT_YUV420SP;
+//    enc_params.fmt = MPP_FMT_RGB888;
     //enc_params.type = MPP_VIDEO_CodingHEVC;
     //Note: rk3562只能支持h264格式的视频流
     enc_params.type = MPP_VIDEO_CodingAVC;
@@ -290,7 +290,7 @@ void mpp_decoder_frame_callback(void* userdata, int width_stride, int height_str
   int enc_buf_size = ctx->encoder->GetFrameSize();
   char* enc_data = (char*)malloc(enc_buf_size);
 
-  RKNN_INFERENCER::image_frame_t img;
+  image_frame_t img;
   img.width = width;
   img.height = height;
   img.width_stride = width_stride;
@@ -298,6 +298,7 @@ void mpp_decoder_frame_callback(void* userdata, int width_stride, int height_str
   img.fd = fd;
   img.virt_addr = (char*)data;
   img.format = RK_FORMAT_YCbCr_420_SP;
+//  img.format = RK_FORMAT_RGB_888;
   detect_result_group_t detect_result;
   memset(&detect_result, 0, sizeof(detect_result_group_t));
 
@@ -328,15 +329,15 @@ void mpp_decoder_frame_callback(void* userdata, int width_stride, int height_str
     draw_rectangle_yuv420sp((unsigned char*)mpp_frame_addr, width_stride, height_stride, x1, y1, x2-x1+1, y2-y1+1, 0x00FF0000, 4);
   }
 
-  // Encode to file
-  // Write header on first frame
-  if (frame_index == 1) {
-    enc_data_size = ctx->encoder->GetHeader(enc_data, enc_buf_size);
-    fwrite(enc_data, 1, enc_data_size, ctx->out_fp);
-  }
-  memset(enc_data, 0, enc_buf_size);
-  enc_data_size = ctx->encoder->Encode(mpp_frame, enc_data, enc_buf_size);
-  fwrite(enc_data, 1, enc_data_size, ctx->out_fp);
+//  // Encode to file
+//  // Write header on first frame
+//  if (frame_index == 1) {
+//    enc_data_size = ctx->encoder->GetHeader(enc_data, enc_buf_size);
+//    fwrite(enc_data, 1, enc_data_size, ctx->out_fp);
+//  }
+//  memset(enc_data, 0, enc_buf_size);
+//  enc_data_size = ctx->encoder->Encode(mpp_frame, enc_data, enc_buf_size);
+//  fwrite(enc_data, 1, enc_data_size, ctx->out_fp);
 
 RET:
   if (enc_data != nullptr) {
@@ -452,7 +453,7 @@ int RKNN_INFERENCER::full_test(int argc, char** argv)
 
 #if defined(BUILD_VIDEO_RTSP)
 void API_CALL on_track_frame_out(void *user_data, mk_frame frame) {
-  RKNN_INFERENCER::rknn_app_context_t *ctx = (RKNN_INFERENCER::rknn_app_context_t *) user_data;
+  rknn_app_context_t *ctx =(rknn_app_context_t *) user_data;
   printf("on_track_frame_out ctx=%p\n", ctx);
   const char* data = mk_frame_get_data(frame);
   size_t size = mk_frame_get_data_size(frame);
@@ -462,7 +463,7 @@ void API_CALL on_track_frame_out(void *user_data, mk_frame frame) {
 
 void API_CALL on_mk_play_event_func(void *user_data, int err_code, const char *err_msg, mk_track tracks[],
                                     int track_count) {
-  RKNN_INFERENCER::rknn_app_context_t *ctx = (RKNN_INFERENCER::rknn_app_context_t *) user_data;
+  rknn_app_context_t *ctx = (rknn_app_context_t *) user_data;
   if (err_code == 0) {
       //success
       printf("play success!");

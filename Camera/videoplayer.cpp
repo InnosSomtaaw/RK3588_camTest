@@ -4,7 +4,6 @@
 VideoPlayer::VideoPlayer()
 {
     isCapturing = false; hasFinished = false;
-    width = 0;height = 0;bpl = 0;
 }
 
 VideoPlayer::~VideoPlayer()
@@ -139,20 +138,7 @@ void VideoPlayer::run()
                 //把这个RGB数据 用QImage加载
                 QImage tmpImg((uchar *)buf,pAVctx->width,pAVctx->height,QImage::Format_RGB32);
                 QImage image = tmpImg.copy(); //把图像复制一份 传递给界面显示
-                width = image.width();height = image.height();bpl = image.bytesPerLine();
                 emit sig_GetOneFrame(image);  //发送信号
-       ///2017.8.11---lizhen
-//                //提取出图像中的R数据
-//                for(int i=0;i<pAVctx->width;i++)
-//                {
-//                    for(int j=0;j<pAVctx->height;j++)
-//                    {
-//                        QRgb rgb=image.pixel(i,j);
-//                        int r=qRed(rgb);
-//                        image.setPixel(i,j,qRgb(r,0,0));
-//                    }
-//                }
-//                emit sig_GetRFrame(image);
             }
         }
         av_packet_unref(packet);//释放资源,否则内存会一直上升
