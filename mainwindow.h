@@ -7,10 +7,8 @@
 
 #include "ImageProcess/image_processing.h"
 #include "Camera/videoplayer.h"
+#include "Camera/mpp_player.h"
 #include "RKNN/rknn_inferencer.h"
-
-//#include "pictureview.h"
-
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow;}
@@ -137,24 +135,24 @@ private:
     WorkConditionsEnum workCond;
     QSettings *iniRW;
 
-    //RKNN
-    RKNN_INFERENCER *rknnInfer;
-
     //图像处理类
     Image_Processing_Class *imgProcess_main;
     //图像处理线程
     QThread *m_imgprocsThread;
 
-    //数字相机类（rtsp读取）
-    VideoPlayer *mPlayer1;                  //播放线程
-    VideoPlayer *mPlayer2;
-    //数字相机类（硬盘录像机）
-//    cameraDAHUA *mNVR;
+//    //数字相机类（ffmpeg读取）
+//    VideoPlayer *mPlayer1;
+//    VideoPlayer *mPlayer2;
 
+    //数字相机类（mpp读取）
+    MPP_PLAYER *mppPlayer1;
+    MPP_PLAYER *mppPlayer2;
+    //RKNN线程
+    QThread *rknnThread1;
+    QThread *rknnThread2;
 
-
-    //NVR处理线程
-//    QThread *mNvrThread;
+    //RKNN类
+    RKNN_INFERENCER *rknnInfer;
 
     QMetaEnum  qSYSTEM_STATUS,qDOWN_PERMIT,qNO_BOX_ALARM,qSLING_ALARM,qTRUCK_CHECK;
     QMetaEnum  qBOX_TYPE,qPLC_STATUS,qLOCKETED_STATUS;
@@ -167,8 +165,6 @@ private:
     void connectIPC();
     //显示窗体信号-槽连接函数
     void connectImgBox();
-    //数字相机类信号-槽连接函数
-    void connectCamera();
 
 };
 

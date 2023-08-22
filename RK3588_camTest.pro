@@ -17,6 +17,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     Camera/videoplayer.cpp \
+    Camera/mpp_player.cpp \
     ImageProcess/cv_stereomatcher.cpp \
     ImageProcess/image_processing.cpp \
     ImageProcess/imghdr.cpp \
@@ -31,6 +32,7 @@ SOURCES += \
 
 HEADERS += \
     Camera/videoplayer.h \
+    Camera/mpp_player.h \
     ImageProcess/cv_stereomatcher.h \
     ImageProcess/image_processing.h \
     ImageProcess/imghdr.h \
@@ -45,34 +47,43 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
-# Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
+target.path = /home/toybrick/Works/CrossCompiled/$${TARGET}
+INSTALLS += target
 
 QMAKE_LFLAGS += -no-pie
 
-unix: CONFIG += link_pkgconfig
-unix: PKGCONFIG += opencv4 \
-                   libavcodec\
-                   libavformat \
-                   libavutil \
-                   libswresample \
-                   libswscale
+#unix: CONFIG += link_pkgconfig
+#unix: PKGCONFIG += opencv4 \
+#                   libavcodec\
+#                   libavformat \
+#                   libavutil \
+#                   libswresample \
+#                   libswscale
 
-#unix:!macx: LIBS += -L$$PWD/../3rdparty/mpp/Linux/aarch64/ -lrockchip_mpp \
-#                    -L$$PWD/../3rdparty/rga/RK3588/lib/Linux/aarch64/ -lrga \
-#                    -L$$PWD/../3rdparty/zlmediakit/aarch64/ -lmk_api
+unix:!macx: LIBS += \
+-L//home/toybrick/opencv-build/install/lib/ -lopencv_world \
+-L//home/toybrick/ffmpegInstall/lib/ -lavcodec \
+-L//home/toybrick/ffmpegInstall/lib/ -lavformat \
+-L//home/toybrick/ffmpegInstall/lib/ -lavutil \
+-L//home/toybrick/ffmpegInstall/lib/ -lswresample \
+-L//home/toybrick/ffmpegInstall/lib/ -lswscale \
+-L/home/toybrick/librknn_api/lib/ -lrockchip_mpp \
+-L/home/toybrick/librknn_api/lib/ -lrga \
+-L/home/toybrick/librknn_api/lib/ -lmk_api \
+-L/home/toybrick/librknn_api/lib/ -lrknnrt
 
-unix:!macx: LIBS += -L/home/toybrick/Works/lib/ -lrockchip_mpp \
-                    -L/home/toybrick/Works/lib/ -lrga \
-                    -L/home/toybrick/Works/lib/ -lmk_api \
-                    -L/home/toybrick/Works/lib/ -lrknnrt
-
-INCLUDEPATH += $$PWD/../3rdparty/mpp/include \
-               $$PWD/../3rdparty/rga/RK3588/include \
-               $$PWD/../3rdparty/zlmediakit/include
-DEPENDPATH += $$PWD/../3rdparty/mpp/include \
-              $$PWD/../3rdparty/rga/RK3588/include \
-              $$PWD/../3rdparty/zlmediakit/include
+INCLUDEPATH += \
+/home/toybrick/ffmpegInstall/include \
+/home/toybrick/opencv-build/install/include/opencv4 \
+/home/toybrick/librknn_api/include \
+/home/toybrick/3rdparty/mpp/include \
+/home/toybrick/3rdparty/rga/RK3588/include \
+/home/toybrick/3rdparty/zlmediakit/include \
+DEPENDPATH += \
+/home/toybrick/ffmpegInstall/include \
+/home/toybrick/opencv-build/install/include/opencv4 \
+/home/toybrick/librknn_api/include \
+/home/toybrick/3rdparty/mpp/include \
+/home/toybrick/3rdparty/rga/RK3588/include \
+/home/toybrick/3rdparty/zlmediakit/include
 

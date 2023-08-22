@@ -34,7 +34,6 @@ public:
 
 signals:
     void sig_GetOneFrame(QImage); //每获取到一帧图像 就发送此信号
-    void sig_GetRFrame(QImage);   ///2017.8.11---lizhen
 
 protected:
     void run();
@@ -42,7 +41,6 @@ protected:
 public:
     bool mainwindowIsStopProcess,isConnected,isCapturing,isDetecting,hasFinished;
     QString videoURL;
-    int width,height,bpl;
 
 private:
 
