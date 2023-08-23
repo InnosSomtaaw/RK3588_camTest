@@ -8,39 +8,24 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-
     //显示窗体初始化
     initImageBoxes();
-
-    isDetecting = false;
     //图像处理类初始化
     initImageProcess();
-
-    //初始化程序工况
-    initWorkCondition();
-
     //初始化网络相机设置
-    initCamSettings();
-
+//    initCamSettings();
     //初始化输入输出图像列表
-    initImageInOuts();
-
-    //默认AI路径初始化
-//    initDefaultAIPaths();
-
-    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream");
-    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h265/ch1/main/av_stream");
-
-    //数字相机类初始化（rtsp读取）
+//    initImageInOuts();
+    //数字相机类初始化
     initVideoPlayers();
-
-    //RKNN类初始化
-    rknnInfer=new RKNN_INFERENCER;
-
     //文本输出初始化
     initTextBrowsers();
-
-    initBaseSettings();
+    //默认AI路径初始化
+    initDefaultAIPaths();
+    //初始化程序工况
+    initWorkCondition();
+    //初始化参数设置
+//    initBaseSettings();
 }
 
 MainWindow::~MainWindow()
@@ -125,20 +110,54 @@ void MainWindow::initImageBoxes()
     ui->imagebox3->setScene(&scene3);
     scene3.addItem(&pixmapShow3);
 
-    connectImgBox();
+    connect(this->ui->imagebox1,&PictureView::outputImgProperty_request,
+            this,&MainWindow::on_imagebox1_OpenImage);
+    connect(this->ui->imagebox2,&PictureView::outputImgProperty_request,
+            this,&MainWindow::on_imagebox2_OpenImage);
 }
 
 void MainWindow::initDefaultAIPaths()
 {
-    proj_path = ".\\AI_Initial_Data\\TGS_train\\TGS_train.proj";
+    //RKNN类初始化
+    rknnInfer=new RKNN_INFERENCER;
+    connect(this,&MainWindow::startRkOnceRequest,
+            rknnInfer,&RKNN_INFERENCER::RunOnce);
+    connect(rknnInfer,&RKNN_INFERENCER::outputImgProcessedRequest,
+            this,&MainWindow::on_imagebox1_refresh);
+    rknnThread=new QThread;
+    rknnInfer->moveToThread(rknnThread);
+    rknnThread->start();
+
+
+    proj_path = "./model/RK3588/yolov5s-640-640.rknn";
     img_path = ".\\AI_Initial_Data\\TGS_train\\srcImg.bmp";
     node_name = "hasBoxTGS hasNoBox noBoxTGS ";
 }
 
 void MainWindow::initImageProcess()
 {
+    isDetecting = false;
     imgProcess_main = new Image_Processing_Class;
-    connectIPC();
+    connect(this,&MainWindow::startPicsProcessRequest,
+            imgProcess_main,&Image_Processing_Class::startPicsProcess);
+
+    connect(imgProcess_main, &Image_Processing_Class::outputMulImgAIRequest,
+            this, &MainWindow::on_imageboxes_refresh);
+
+    connect(imgProcess_main,&Image_Processing_Class::outputImgProcessedRequest,
+            this,&MainWindow::on_imageboxes_refresh);
+
+    connect(imgProcess_main,&Image_Processing_Class::mainwindowStatusRequest,
+            this,&MainWindow::on_mainwindowStatus_inform);
+
+    connect(this,&MainWindow::changeProcParasRequest,
+            imgProcess_main,&Image_Processing_Class::changeProcPara);
+
+    connect(this, SIGNAL(startMulCamProcessRequest(QImage, int)),
+            imgProcess_main, SLOT(startMulCamProcess(QImage, int)));
+    connect(this, SIGNAL(startMulCamTempRequest(QImage, int)),
+            imgProcess_main, SLOT(startMulCamTemp(QImage, int)));
+//    connectIPC();
     m_imgprocsThread = new QThread();
     imgProcess_main->moveToThread(m_imgprocsThread);
     m_imgprocsThread->start();
@@ -148,41 +167,31 @@ void MainWindow::initImageProcess()
 
 void MainWindow::initVideoPlayers()
 {
+    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream");
+    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h265/ch1/main/av_stream");
+
     isCapturing1=false;
     isCapturing2=false;
 
     //数字相机类初始化（mpp读取）
-    mppPlayer1=new MPP_PLAYER;
-    mppPlayer1->videoURL = urls[0];
-    mppPlayer1->video_type=264;
-    connect(mppPlayer1,&MPP_PLAYER::sig_GetOneFrame,
+    mppPlayer=new MPP_PLAYER;
+    mppPlayer->videoURL = urls[0];
+    mppPlayer->video_type=264;
+    connect(mppPlayer,&MPP_PLAYER::sig_GetOneFrame,
             this,&MainWindow::slotGetOneFrame1);
-    rknnThread1 = new QThread();
-    mppPlayer1->moveToThread(rknnThread1);
-    rknnThread1->start();
-    mppPlayer2=new MPP_PLAYER;
-    mppPlayer2->videoURL = urls[1];
-    mppPlayer2->video_type=265;
-    connect(mppPlayer2,&MPP_PLAYER::sig_GetOneFrame,
-            this,&MainWindow::slotGetOneFrame2);
-    rknnThread2 = new QThread();
-    mppPlayer2->moveToThread(rknnThread2);
-    rknnThread2->start();
+    playerThread=new QThread();
+    mppPlayer->moveToThread(playerThread);
+    playerThread->start();
 
-//    mPlayer1 = new VideoPlayer;
-//    mPlayer1->videoURL = urls[0];
-//    mPlayer2 = new VideoPlayer;
-//    mPlayer2->videoURL = urls[1];
-//    connect(mPlayer1,SIGNAL(sig_GetOneFrame(QImage)),
-//            this,SLOT(slotGetOneFrame1(QImage)));
-//    connect(mPlayer2, SIGNAL(sig_GetOneFrame(QImage)),
-//            this, SLOT(slotGetOneFrame2(QImage)));
+    //数字相机类初始化（ffmpeg读取）
+    ffPlayer=new VideoPlayer;
+    ffPlayer->videoURL=urls[1];
+    connect(ffPlayer,&VideoPlayer::sig_GetOneFrame,
+            this,&MainWindow::slotGetOneFrame2);
 }
 
 void MainWindow::initBaseSettings()
 {
-
-
 //    FileStorage fs(_BASE_SETTING_FILES, FileStorage::READ);
 //    if(!fs.isOpened())
 //        return;
@@ -214,131 +223,43 @@ void MainWindow::initWorkCondition()
     workCond=WorkConditionsEnum(iniRW->value("WorkCondition/WorkCondition").toInt());
     imgProcess_main->workCond=workCond;
     ui->condComboBox->setCurrentIndex(workCond);
-//    setBases(workCond*2);
 }
 
 void MainWindow::on_buttonOpenAIProject_clicked()
 {
-    proj_path = QFileDialog::getOpenFileName(this,tr("Open Project"),".\\AI_Initial_Data\\",
-                                             tr("Project File(*.proj)"));
+    QByteArray qba = proj_path.toLocal8Bit();
+    rknnInfer->model_name=qba.data();
+    int fg=rknnInfer->InitRKNN();
+    return;
+
+    proj_path = QFileDialog::getOpenFileName(this,tr("Open RKNN Model: "),"./model/",
+                                             tr("Model File(*.rknn)"));
     if (proj_path.isEmpty())
         return;
     proj_path = proj_path.replace("/","\\");
 
-    img_path = QFileDialog::getOpenFileName(this,tr("Open Sample"),".\\AI_Initial_Data\\",
-                                            tr("Sample Picture(*.bmp)"));
-    if (img_path.isEmpty())
-        return;
-
-    QStringList node_nameList = QFileDialog::getOpenFileNames(this,tr("Open Nodes"),".\\AI_Initial_Data\\",
-                                                              tr("Node Files(*.te)"));
-    if(node_nameList.isEmpty())
-        return;
-
-    node_name.clear();
-    for(int i=0;i<node_nameList.size();i++)
-    {
-        QFileInfo fi = QFileInfo(node_nameList[i]);
-        QByteArray ba;
-        ba.append(fi.fileName());
-        QList<QByteArray> baList = ba.split('.');
-        QString str = QString(baList[0]);
-        node_name.append(str+" ");
-    }
-}
-
-void MainWindow::on_buttonProcessOnce_clicked()
-{
-    this->isDetecting = false;
-
-//    if(this_mb->isConnected)
-//        this_mb->startProcessOnce();
-
-    QImage qimg1 = pixmapShow1.pixmap().toImage();
-
-    Mat temp_img;
-    temp_img = Mat(qimg1.height(),qimg1.width(),
-                CV_8UC4,qimg1.bits(),
-                qimg1.bytesPerLine());
-    cvtColor(temp_img,img_input1,COLOR_BGRA2BGR);
-//    cvtColor(temp_img,img_input1,CV_BGRA2BGR);
-    temp_img.release();
-
-    if(img_input1.empty())
-        return;
-
-    imgProcess_main->img_input1 = img_input1;
-//    imgProcess_main->img_input2 = img_input1.clone();
-
-    //测试AI多工程
-//    if(img_input2.empty())
-//        imgProcess_main_t->img_input1 = img_input1.clone();
-//    else
-//        imgProcess_main_t->img_input1 = img_input2;
-
-    if(!this->m_imgprocsThread->isInterruptionRequested())
-        emit startProcessOnceRequest();
-    //测试AI多工程
-//    if(!this->m_imgprocsThread->isInterruptionRequested())
-//        emit startProcessOnceRequest1();
-//    if(!this->m_imgprocsThread_t->isInterruptionRequested())
-//        emit startProcessOnceRequest2();
-}
-
-void MainWindow::on_imagebox_refresh()
-{
-//    if(!imgProcess_main->ipcMutex.tryLock())
+//    img_path = QFileDialog::getOpenFileName(this,tr("Open Sample"),".\\AI_Initial_Data\\",
+//                                            tr("Sample Picture(*.bmp)"));
+//    if (img_path.isEmpty())
 //        return;
 
-//    img_outputs[0] = imgProcess_main->img_output1;
-////    if(ws[0]>0 && hs[0]>0)
-////        cv::resize(img_outputs[0],img_outputs[0],Size(ws[0],hs[0]));
+//    QStringList node_nameList = QFileDialog::getOpenFileNames(this,tr("Open Nodes"),".\\AI_Initial_Data\\",
+//                                                              tr("Node Files(*.te)"));
+//    if(node_nameList.isEmpty())
+//        return;
 
-//    cvtColor(img_outputs[0], img_outputs[0], COLOR_BGR2RGB);//图像格式转换
-//    vector<QImage> disImages;
-
-//    //窗体显示
-//    for(int i = 0; i<4; i++)
+//    node_name.clear();
+//    for(int i=0;i<node_nameList.size();i++)
 //    {
-//        if(img_outputs[i].empty())
-//            continue;
-//        QImage disImage;
-//        disImage = QImage(img_outputs[i].data,img_outputs[i].cols,img_outputs[i].rows,
-//                             QImage::Format_RGB888);
-//        switch(i)
-//        {
-//        case 0:
-////            disImage = disImage.scaled(ui->imagebox1->width()-5, ui->imagebox1->height()-5,
-////                                               Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-//            pixmapShow1.setPixmap(QPixmap::fromImage(disImage));
-////            ui->imagebox1->Adapte();
-//            break;
-//        case 1:
-////            disImage = disImage.scaled(ui->imagebox2->width()-5, ui->imagebox2->height()-5,
-////                                               Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-//            pixmapShow2.setPixmap(QPixmap::fromImage(disImage));
-////            ui->imagebox2->Adapte();
-//            break;
-//        case 2:
-////            disImage = disImage.scaled(ui->imagebox3->width()-5, ui->imagebox3->height()-5,
-////                                               Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-//            pixmapShow3.setPixmap(QPixmap::fromImage(disImage));
-////            ui->imagebox3->Adapte();
-//            break;
-//        }
+//        QFileInfo fi = QFileInfo(node_nameList[i]);
+//        QByteArray ba;
+//        ba.append(fi.fileName());
+//        QList<QByteArray> baList = ba.split('.');
+//        QString str = QString(baList[0]);
+//        node_name.append(str+" ");
 //    }
-////    pixmapShow2.setPixmap(QPixmap::fromImage(disImage));
-//    imgProcess_main->ipcMutex.unlock();
-
-//    //界面状态显示
-////    ui->buttonProcessOnce->setEnabled(true);
-//    ui->textSavingCount->setStyleSheet("background-color: rgb(255,255,255)");
-
-//    if (imgProcess_main->isSavingImage)
-//        ui->textSavingCount->setStyleSheet("background-color: rgb(176,196,222)");
-//    else
-//        ui->textSavingCount->setStyleSheet("background-color: rgb(255,255,255)");
 }
+
 
 void MainWindow::on_imageboxes_refresh()
 {
@@ -475,12 +396,10 @@ void MainWindow::on_mainwindowStatus_inform()
 void MainWindow::connectIPC()
 {
     connect(this,&MainWindow::startPicsProcessRequest,
-                               imgProcess_main,&Image_Processing_Class::startPicsProcess);
+            imgProcess_main,&Image_Processing_Class::startPicsProcess);
 
-    connect(this, SIGNAL(startMulCamProcessRequest(QImage, int)),
-            imgProcess_main, SLOT(startMulCamProcess(QImage, int)));
-    connect(this, SIGNAL(startMulCamTempRequest(QImage, int)),
-            imgProcess_main, SLOT(startMulCamTemp(QImage, int)));
+    connect(this,&MainWindow::startRkOnceRequest,
+            rknnInfer,&RKNN_INFERENCER::RunOnce);
 
     connect(imgProcess_main, &Image_Processing_Class::outputMulImgAIRequest,
             this, &MainWindow::on_imageboxes_refresh);
@@ -493,14 +412,11 @@ void MainWindow::connectIPC()
 
     connect(this,&MainWindow::changeProcParasRequest,
             imgProcess_main,&Image_Processing_Class::changeProcPara);
-}
 
-void MainWindow::connectImgBox()
-{
-    connect(this->ui->imagebox1,&PictureView::outputImgProperty_request,
-            this,&MainWindow::on_imagebox1_OpenImage);
-    connect(this->ui->imagebox2,&PictureView::outputImgProperty_request,
-            this,&MainWindow::on_imagebox2_OpenImage);
+    connect(this, SIGNAL(startMulCamProcessRequest(QImage, int)),
+            imgProcess_main, SLOT(startMulCamProcess(QImage, int)));
+    connect(this, SIGNAL(startMulCamTempRequest(QImage, int)),
+            imgProcess_main, SLOT(startMulCamTemp(QImage, int)));
 }
 
 //void MainWindow::on_buttonOpenVideo_clicked()
@@ -641,33 +557,20 @@ void MainWindow::on_textSavingCount_textChanged()
 
 void MainWindow::on_buttonStartCapture_clicked()
 {  
-//    isCapturing1=true;
-//    char *input[]={"","./model/RK3588/yolov5s-640-640.rknn",
-//                  "rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream",
-//                  "264"};
-//    rknnInfer->full_test(4,input);
-//    return;
-
     if(ui->buttonStartCapture->text()=="StartCapture")
     {
         isCapturing1=true;
         isCapturing2=true;
         ui->buttonStartCapture->setText("StopCapture");
 
-        if(!mppPlayer1->hasStarted)
-            mppPlayer1->startPlay();
+        if(!mppPlayer->hasStarted)
+            mppPlayer->startPlay();
         else
-            mppPlayer1->mppMutex.unlock();
+            mppPlayer->mppMutex.unlock();
 
-//        mppPlayer2->startPlay();
-
-//        mPlayer1->isCapturing = isCapturing1;
-//        mPlayer1->startPlay();
-//        mPlayer2->isCapturing1 = isCapturing1s[1];
-//        mPlayer2->startPlay();
-
-//        mNVR->isCapturing1=isCapturing1s[0];
-//        mNVR->cameraPlay4();
+        ffPlayer->isCapturing=isCapturing2;
+//        if(!ffPlayer->hasStarted)
+//            ffPlayer->startPlay();
 
         ui->editCheckBox->setEnabled(false);
     }
@@ -678,10 +581,9 @@ void MainWindow::on_buttonStartCapture_clicked()
 
         ui->buttonStartCapture->setText("StartCapture");
 
-        mppPlayer1->mppMutex.lock();
-//        mppPlayer2->mppMutex.lock();
-//        mPlayer1->isCapturing = isCapturing1;
-//        mPlayer2->isCapturing1 = isCapturing1s[1];
+        mppPlayer->mppMutex.tryLock();
+
+        ffPlayer->isCapturing=isCapturing2;
 
         if((!imgProcess_main->img_inputs[0].empty())&(!imgProcess_main->img_inputs[2].empty()))
         {
@@ -783,6 +685,60 @@ void MainWindow::on_editCheckBox_stateChanged(int state)
     }
 }
 
+void MainWindow::on_imagebox1_refresh()
+{
+    if(!rknnInfer->ipcMutex.tryLock())
+        return;
+
+    QImage disImage;
+
+    img_output1=rknnInfer->img_output1;
+    //窗体1显示
+    if(img_output1.channels()==1)
+        disImage = QImage(img_output1.data,img_output1.cols,img_output1.rows,
+                          img_output1.cols*img_output1.channels(),QImage::Format_Grayscale8);
+    else
+    {
+//        cvtColor(img_input1, img_input1, COLOR_BGR2RGB);//图像格式转换
+        disImage = QImage(img_output1.data,img_output1.cols,img_output1.rows,
+                          img_output1.cols*img_output1.channels(),QImage::Format_BGR888);
+    }
+    pixmapShow1.setPixmap(QPixmap::fromImage(disImage));
+
+    rknnInfer->ipcMutex.unlock();
+
+//    //界面状态显示
+//    ui->textSavingCount->setStyleSheet("background-color: rgb(255,255,255)");
+
+//    if (imgProcess_main->isSavingImage)
+//        ui->textSavingCount->setStyleSheet("background-color: rgb(176,196,222)");
+//    else
+//        ui->textSavingCount->setStyleSheet("background-color: rgb(255,255,255)");
+//    /*QString str;
+//    str.sprintf("x: %f, y: %f, z: %f", imgProcess_main->pt1.x/1000, imgProcess_main->pt1.y/1000, imgProcess_main->pt1.z/1000);*/
+
+//    QString str;
+//    QString tempStr;
+//    for(int i = 0; i<2; i++)
+//    {
+//        tempStr.sprintf("The %dth camera:\n", i+1);
+//        str += tempStr;
+//        for(int k = 0; k<imgProcess_main->ptsVec[i].size(); k++)
+//        {
+//            tempStr.sprintf("x: %4d, y: %4d\n", imgProcess_main->ptsVec[i][k].x, imgProcess_main->ptsVec[i][k].y);
+//            str += tempStr;
+//        }
+//    }
+//    ui->textBrowser1->setText(str);
+//    str.clear();
+
+}
+
+void MainWindow::on_imagebox2_refresh()
+{
+
+}
+
 void MainWindow::requestProcess(QImage img, int i)
 {
     //对应startMulCamProcessRequest(QImage, int)
@@ -819,13 +775,17 @@ void MainWindow::slotGetOneFrame1(QImage img)
         //窗体1显示
         pixmapShow1.setPixmap(QPixmap::fromImage(img));
 //        ui->imagebox1->Adapte();
-//        emit startMulCamTempRequest(img, 0);
-//        QImage2Mat(img, img_inputs[0]);
     }
 
     if(isCapturing1 && isDetecting)
     {
-        requestProcess(img, 0);
+        if(rknnInfer->ipcMutex.tryLock())
+        {
+            rknnInfer->img_input1=Mat(img.height(), img.width(), CV_8UC3,
+                                      img.bits(), img.bytesPerLine());
+            emit startRkOnceRequest();
+            rknnInfer->ipcMutex.unlock();
+        }
     }
 }
 

@@ -3,7 +3,7 @@
 
 VideoPlayer::VideoPlayer()
 {
-    isCapturing = false; hasFinished = false;
+    isCapturing = false; hasFinished = false;hasStarted=false;
 }
 
 VideoPlayer::~VideoPlayer()
@@ -13,6 +13,7 @@ VideoPlayer::~VideoPlayer()
 
 void VideoPlayer::startPlay()
 {
+    hasStarted=true;
     ///调用 QThread 的start函数 将会自动执行下面的run函数 run函数是一个新的线程
     this->start();
 
