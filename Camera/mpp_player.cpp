@@ -24,7 +24,7 @@ void MPP_PLAYER::startPlay()
     const char *video_name=qba.data();
 
     decoder->Init(video_type, 30 ,(void *)this);
-    decoder->SetCallback(mpp_decoder_frame_callback1);
+    decoder->SetCallback(mpp_decoder_frame_callback);
 
     printf("app_ctx=%p decoder=%p\n", this, &this->decoder);
 
@@ -32,8 +32,8 @@ void MPP_PLAYER::startPlay()
     memset(&config, 0, sizeof(mk_config));
     config.log_mask = LOG_CONSOLE;
     mk_env_init(&config);
-    mk_player_set_on_result(player, on_mk_play_event_func1, (void *)this);
-    mk_player_set_on_shutdown(player, on_mk_shutdown_func1, (void *)this);
+    mk_player_set_on_result(player, on_mk_play_event_func, (void *)this);
+    mk_player_set_on_shutdown(player, on_mk_shutdown_func, (void *)this);
     mk_player_play(player, video_name);
     hasStarted=true;
 }
@@ -70,7 +70,7 @@ void MPP_PLAYER::getFrame()
     emit sig_GetOneFrame(disImage);  //发送信号
 }
 
-void API_CALL mpp_decoder_frame_callback1(void *user_data, int width_stride, int height_stride,
+void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int height_stride,
                                          int width, int height, int format, int fd, void *data)
 {
     MPP_PLAYER *ctx=(MPP_PLAYER*)user_data;
@@ -84,7 +84,7 @@ void API_CALL mpp_decoder_frame_callback1(void *user_data, int width_stride, int
     ctx->getFrame();
 }
 
-void API_CALL on_track_frame_out1(void *user_data, mk_frame frame)
+void API_CALL on_track_frame_out(void *user_data, mk_frame frame)
 {
     MPP_PLAYER *ctx=(MPP_PLAYER*)user_data;
     printf("on_track_frame_out ctx=%p\n", ctx);
@@ -94,7 +94,7 @@ void API_CALL on_track_frame_out1(void *user_data, mk_frame frame)
     ctx->decoder->Decode((uint8_t*)data, size, 0);
 }
 
-void API_CALL on_mk_play_event_func1(void *user_data, int err_code, const char *err_msg,
+void API_CALL on_mk_play_event_func(void *user_data, int err_code, const char *err_msg,
                                      mk_track tracks[],int track_count)
 {
     MPP_PLAYER *ctx = (MPP_PLAYER *) user_data;
@@ -106,7 +106,7 @@ void API_CALL on_mk_play_event_func1(void *user_data, int err_code, const char *
             if (mk_track_is_video(tracks[i])) {
                 log_info("got video track: %s", mk_track_codec_name(tracks[i]));
                 //监听track数据回调
-                mk_track_add_delegate(tracks[i], on_track_frame_out1, user_data);
+                mk_track_add_delegate(tracks[i], on_track_frame_out, user_data);
             }
         }
     } else {
@@ -114,7 +114,7 @@ void API_CALL on_mk_play_event_func1(void *user_data, int err_code, const char *
     }
 }
 
-void API_CALL on_mk_shutdown_func1(void *user_data, int err_code, const char *err_msg,
+void API_CALL on_mk_shutdown_func(void *user_data, int err_code, const char *err_msg,
                                    mk_track tracks[], int track_count)
 {
     printf("play interrupted: %d %s", err_code, err_msg);

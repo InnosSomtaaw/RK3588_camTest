@@ -17,11 +17,6 @@ extern "C"
 #include<iostream>
 using namespace std;
 
-//2017.8.10---lizhen
-class VlcInstance;
-class VlcMedia;
-class VlcMediaPlayer;
-
 class VideoPlayer : public QThread
 {
     Q_OBJECT
@@ -39,15 +34,9 @@ protected:
     void run();
 
 public:
-    bool mainwindowIsStopProcess,isConnected,isCapturing,isDetecting,hasFinished;
+    bool mainwindowIsStopProcess,hasStarted,isCapturing,isDetecting,hasFinished;
     QString videoURL;
 
-private:
-
-    //2017.8.10---lizhen
-    VlcInstance *_instance;
-    VlcMedia *_media;
-    VlcMediaPlayer *_player;
 };
 
 #endif // VIDEOPLAYER_H

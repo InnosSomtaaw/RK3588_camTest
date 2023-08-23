@@ -25,6 +25,7 @@ enum WorkConditionsEnum
     HDRfrom1Img,
     HDRfrom1ImgGPU,
     ResizeShow,
+    InferenceRKNN,
 };
 void QImage2Mat(QImage img, Mat& imgMat);
 
@@ -74,7 +75,7 @@ public:
 
     QQueue<Point> *basePTs;
     QQueue<bool> *islifting;
-    CVStereoMatcher stereoMatcher;
+//    CVStereoMatcher stereoMatcher;
     Point3f pt1, pt2;
     vector<vector<Point> > ptsVec;
 

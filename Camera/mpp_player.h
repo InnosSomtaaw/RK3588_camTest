@@ -22,9 +22,6 @@
 #include "../RKNN/utils/drawing.h"
 #include "mk_mediakit.h"
 
-//#include <opencv2/opencv.hpp>
-//using namespace cv;
-
 class MPP_PLAYER : public QObject
 {
     Q_OBJECT
@@ -50,12 +47,12 @@ signals:
     void sig_GetOneFrame(QImage); //每获取到一帧图像 就发送此信号
 };
 
-void API_CALL mpp_decoder_frame_callback1(void *user_data, int width_stride, int height_stride,
+void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int height_stride,
                                          int width, int height, int format, int fd, void *data);
-void API_CALL on_track_frame_out1(void *user_data, mk_frame frame);
-void API_CALL on_mk_play_event_func1(void *user_data, int err_code, const char *err_msg,
+void API_CALL on_track_frame_out(void *user_data, mk_frame frame);
+void API_CALL on_mk_play_event_func(void *user_data, int err_code, const char *err_msg,
                                      mk_track tracks[],int track_count);
-void API_CALL on_mk_shutdown_func1(void *user_data, int err_code, const char *err_msg,
+void API_CALL on_mk_shutdown_func(void *user_data, int err_code, const char *err_msg,
                                    mk_track tracks[], int track_count);
 
 #endif // MPP_PLAYER_H

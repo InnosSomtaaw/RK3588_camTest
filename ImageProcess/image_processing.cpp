@@ -287,35 +287,35 @@ void Image_Processing_Class::startMulCamProcess(QImage recvImg, int i)
 
 void Image_Processing_Class::testMulStereoMatcher()
 {
-//    printf(" testMulStereoMatcher start");
-    if(!ipcMutex.tryLock())
-    {
-        printf("no lock!");
-        return;
-    }
-    if(img_inputs[2].empty() | img_inputs[3].empty())
-    {
-        printf("image inputs are empty.");
-        return;
-    }
-    vector<Point> points;
-    points.push_back(Point(276, 288));
-    points.push_back(Point(278, 288));
-    vector<Point3f> pts3;
-    stereoMatcher.calcXYZ(img_inputs[2], img_inputs[3], points, pts3);
-    pt1 = pts3[0];
-    pt2 = pts3[1];
-    printf("%f, %f, %f\n", pt1.x, pt1.y, pt1.z);
-    for(int k = 0; k<4; k++)
-    {
-//        resize(img_inputs[k], img_inputs[k], Size(this_aue->SrcImage.width, this_aue->SrcImage.height));
-        img_outputs[k] = img_inputs[k].clone();
-    }
-    for(int k = 0; k<4; k++)
-        inputFlags[k] = false;
+////    printf(" testMulStereoMatcher start");
+//    if(!ipcMutex.tryLock())
+//    {
+//        printf("no lock!");
+//        return;
+//    }
+//    if(img_inputs[2].empty() | img_inputs[3].empty())
+//    {
+//        printf("image inputs are empty.");
+//        return;
+//    }
+//    vector<Point> points;
+//    points.push_back(Point(276, 288));
+//    points.push_back(Point(278, 288));
+//    vector<Point3f> pts3;
+//    stereoMatcher.calcXYZ(img_inputs[2], img_inputs[3], points, pts3);
+//    pt1 = pts3[0];
+//    pt2 = pts3[1];
+//    printf("%f, %f, %f\n", pt1.x, pt1.y, pt1.z);
+//    for(int k = 0; k<4; k++)
+//    {
+////        resize(img_inputs[k], img_inputs[k], Size(this_aue->SrcImage.width, this_aue->SrcImage.height));
+//        img_outputs[k] = img_inputs[k].clone();
+//    }
+//    for(int k = 0; k<4; k++)
+//        inputFlags[k] = false;
 
-    ipcMutex.unlock();
-    emit outputMulImgAIRequest();
+//    ipcMutex.unlock();
+//    emit outputMulImgAIRequest();
 }
 
 void Image_Processing_Class::changeProcPara(QString qstr, int wc)
