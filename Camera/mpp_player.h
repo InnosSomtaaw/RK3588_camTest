@@ -33,10 +33,8 @@ public:
     QString videoURL;
     int video_type;
     QMutex mppMutex;
-    MppDecoder *decoder;
-    mk_player player;
     bool hasStarted;
-
+    MppDecoder *decoder;
     int width_stride, height_stride,width, height, format,fd;
     void *data;
 
@@ -45,6 +43,15 @@ public:
 
 signals:
     void sig_GetOneFrame(QImage); //每获取到一帧图像 就发送此信号
+
+private:
+    mk_player player;
+    // init rga context
+    rga_buffer_t src;
+    rga_buffer_t dst;
+    im_rect      src_rect;
+    im_rect      dst_rect;
+    void *rgb_buf=nullptr;
 };
 
 void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int height_stride,

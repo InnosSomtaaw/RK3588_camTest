@@ -16,6 +16,8 @@ MPP_PLAYER::~MPP_PLAYER()
     }
     if (player)
         mk_player_release(player);
+    if(rgb_buf!=nullptr)
+        free(rgb_buf);
 }
 
 void MPP_PLAYER::startPlay()
@@ -40,18 +42,13 @@ void MPP_PLAYER::startPlay()
 
 void MPP_PLAYER::getFrame()
 {
-    // init rga context
-    rga_buffer_t src;
-    rga_buffer_t dst;
-    im_rect      src_rect;
-    im_rect      dst_rect;
     memset(&src, 0, sizeof(src));
     memset(&dst, 0, sizeof(dst));
     memset(&src_rect, 0, sizeof(src_rect));
     memset(&dst_rect, 0, sizeof(dst_rect));
 
     printf("cvtcolor with RGA!\n");
-    void *rgb_buf=nullptr;
+
     rgb_buf = malloc(sizeof(uchar)*width * height * 3);
     memset(rgb_buf, 0, sizeof(uchar)*width * height * 3);
 
@@ -66,8 +63,11 @@ void MPP_PLAYER::getFrame()
                                   IM_YUV_TO_RGB_BT709_LIMIT);
 
     QImage disImage = QImage((uchar*)rgb_buf,width,height,width*3,QImage::Format_RGB888);
-//    QImage image = disImage.copy(); //把图像复制一份 传递给界面显示
-    emit sig_GetOneFrame(disImage);  //发送信号
+    QImage image = disImage.copy(); //把图像复制一份 传递给界面显示
+
+    if(rgb_buf!=nullptr)
+        free(rgb_buf);
+    emit sig_GetOneFrame(image);  //发送信号
 }
 
 void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int height_stride,

@@ -41,6 +41,7 @@ public:
     const float    box_conf_threshold = BOX_THRESH;
     struct timeval start_time, stop_time;
     int            ret;
+    int onceRunTime;
 
     static void dump_tensor_attr(rknn_tensor_attr* attr);
     static unsigned char* load_data(FILE* fp, size_t ofst, size_t sz);
@@ -48,9 +49,7 @@ public:
     static int saveFloat(const char* file_name, float* output, int element_size);
 
     double __get_us(struct timeval t);
-    int fullTest(int argc, char** argv);
-
-    int InitRKNN();
+    bool InitRKNN();
 
 public slots:
     int RunOnce();
