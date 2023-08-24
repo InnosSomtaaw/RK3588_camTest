@@ -64,7 +64,7 @@ void Image_Processing_Class::hdr2Imgs(bool onGPU)
     if(!hdrProc->hasInitialized ||
         hdrProc->coffMat.size!=img_input1.size)
     {
-        ustimer.start();
+        usrtimer.start();
         hdrProc->coffMat = Mat(Size(img_input1.cols,img_input1.rows),
                                CV_32FC1);
         if(!onGPU)
@@ -72,7 +72,7 @@ void Image_Processing_Class::hdr2Imgs(bool onGPU)
 
         hdrProc->hasInitialized=true;
         cout<<"Time of coefficient initialization(ms): "<<
-            ustimer.nsecsElapsed()/1000000<<endl;
+            usrtimer.elapsed()<<endl;
     }
 
     if(!onGPU)
@@ -122,7 +122,7 @@ void Image_Processing_Class::hdrImg(bool onGPU)
     if(!hdrProc->hasInitialized ||
         hdrProc->coffMat.size!=img_input1.size)
     {
-        ustimer.start();
+        usrtimer.start();
         hdrProc->coffMat = Mat(Size(img_input1.cols,img_input1.rows),
                                CV_32FC1);
         if(!onGPU)
@@ -130,7 +130,7 @@ void Image_Processing_Class::hdrImg(bool onGPU)
 
         hdrProc->hasInitialized=true;
         cout<<"Time of coefficient initialization(ms): "<<
-            ustimer.nsecsElapsed()/1000000<<endl;
+            usrtimer.elapsed()<<endl;
     }
 
     if(!onGPU)

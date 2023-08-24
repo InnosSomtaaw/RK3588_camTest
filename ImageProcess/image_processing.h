@@ -8,6 +8,7 @@
 #include <QImage>
 #include <qdatetime.h>
 #include <QThread>
+#include <QElapsedTimer>
 
 #include <opencv2/opencv.hpp>
 
@@ -80,7 +81,7 @@ public:
     vector<vector<Point> > ptsVec;
 
     //计时器
-    QElapsedTimer ustimer;
+    QElapsedTimer usrtimer;
 
     //处理图片组
     bool processFilePic();

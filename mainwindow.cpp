@@ -13,19 +13,19 @@ MainWindow::MainWindow(QWidget *parent)
     //图像处理类初始化
     initImageProcess();
     //初始化网络相机设置
-//    initCamSettings();
+    initCamSettings();
     //初始化输入输出图像列表
-//    initImageInOuts();
+    initImageInOuts();
     //数字相机类初始化
     initVideoPlayers();
     //文本输出初始化
     initTextBrowsers();
-    //默认AI路径初始化
-    initDefaultAIPaths();
     //初始化程序工况
     initWorkCondition();
+    //默认AI路径初始化
+    initDefaultAIPaths();
     //初始化参数设置
-//    initBaseSettings();
+    initBaseSettings();
 }
 
 MainWindow::~MainWindow()
@@ -38,6 +38,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::initCamSettings()
 {
+    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream");
+    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h265/ch1/main/av_stream");
+
 //    QDomDocument doc;
 //    QFile file(_CAMS_SETTING_FILES);
 //    if(!file.open(QFile::ReadOnly|QFile::Text))
@@ -128,10 +131,15 @@ void MainWindow::initDefaultAIPaths()
     rknnInfer->moveToThread(rknnThread);
     rknnThread->start();
 
+    if(workCond==InferenceRKNN)
+    {
+        QByteArray qba = proj_path.toLocal8Bit();
+        rknnInfer->model_name=qba.data();
+        rknnInfer->InitRKNN();
+        if(rknnInfer->hasInited)
+            ui->buttonOpenAIProject->setEnabled(false);
+    }
 
-    proj_path = "./model/RK3588/yolov5s-640-640.rknn";
-    img_path = ".\\AI_Initial_Data\\TGS_train\\srcImg.bmp";
-    node_name = "hasBoxTGS hasNoBox noBoxTGS ";
 }
 
 void MainWindow::initImageProcess()
@@ -157,7 +165,6 @@ void MainWindow::initImageProcess()
             imgProcess_main, SLOT(startMulCamProcess(QImage, int)));
     connect(this, SIGNAL(startMulCamTempRequest(QImage, int)),
             imgProcess_main, SLOT(startMulCamTemp(QImage, int)));
-//    connectIPC();
     m_imgprocsThread = new QThread();
     imgProcess_main->moveToThread(m_imgprocsThread);
     m_imgprocsThread->start();
@@ -167,9 +174,6 @@ void MainWindow::initImageProcess()
 
 void MainWindow::initVideoPlayers()
 {
-    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h264/ch1/sub/av_stream");
-    urls.push_back("rtsp://admin:Lead123456@192.168.137.98:554/h265/ch1/main/av_stream");
-
     isCapturing1=false;
     isCapturing2=false;
 
@@ -184,10 +188,10 @@ void MainWindow::initVideoPlayers()
     playerThread->start();
 
     //数字相机类初始化（ffmpeg读取）
-    ffPlayer=new VideoPlayer;
-    ffPlayer->videoURL=urls[1];
-    connect(ffPlayer,&VideoPlayer::sig_GetOneFrame,
-            this,&MainWindow::slotGetOneFrame2);
+//    ffPlayer=new VideoPlayer;
+//    ffPlayer->videoURL=urls[1];
+//    connect(ffPlayer,&VideoPlayer::sig_GetOneFrame,
+//            this,&MainWindow::slotGetOneFrame2);
 }
 
 void MainWindow::initBaseSettings()
@@ -214,50 +218,29 @@ void MainWindow::initBaseSettings()
 void MainWindow::initTextBrowsers()
 {
     ui->textBrowser1->setStyleSheet("background:transparent;border-width:0;border-style:outset");
-    ui->textBrowser1->setText("Waiting for works.");
+
+    strOutput1="place holder 1...\n";
+    strOutput2="\nplace holder 2...\n";
+    ui->textBrowser1->setText(strOutput1+strOutput2);
 }
 
 void MainWindow::initWorkCondition()
 {
     iniRW = new QSettings("LastSettings.ini",QSettings::IniFormat);
     workCond=WorkConditionsEnum(iniRW->value("WorkCondition/WorkCondition").toInt());
+    proj_path=iniRW->value("InferenceRKNN/ModelPath").toString();
     imgProcess_main->workCond=workCond;
     ui->condComboBox->setCurrentIndex(workCond);
 }
 
 void MainWindow::on_buttonOpenAIProject_clicked()
 {
-    QByteArray qba = proj_path.toLocal8Bit();
-    rknnInfer->model_name=qba.data();
-    int fg=rknnInfer->InitRKNN();
-    return;
-
     proj_path = QFileDialog::getOpenFileName(this,tr("Open RKNN Model: "),"./model/",
                                              tr("Model File(*.rknn)"));
     if (proj_path.isEmpty())
         return;
-    proj_path = proj_path.replace("/","\\");
+//    proj_path = proj_path.replace("/","\");
 
-//    img_path = QFileDialog::getOpenFileName(this,tr("Open Sample"),".\\AI_Initial_Data\\",
-//                                            tr("Sample Picture(*.bmp)"));
-//    if (img_path.isEmpty())
-//        return;
-
-//    QStringList node_nameList = QFileDialog::getOpenFileNames(this,tr("Open Nodes"),".\\AI_Initial_Data\\",
-//                                                              tr("Node Files(*.te)"));
-//    if(node_nameList.isEmpty())
-//        return;
-
-//    node_name.clear();
-//    for(int i=0;i<node_nameList.size();i++)
-//    {
-//        QFileInfo fi = QFileInfo(node_nameList[i]);
-//        QByteArray ba;
-//        ba.append(fi.fileName());
-//        QList<QByteArray> baList = ba.split('.');
-//        QString str = QString(baList[0]);
-//        node_name.append(str+" ");
-//    }
 }
 
 
@@ -393,32 +376,6 @@ void MainWindow::on_mainwindowStatus_inform()
 
 }
 
-void MainWindow::connectIPC()
-{
-    connect(this,&MainWindow::startPicsProcessRequest,
-            imgProcess_main,&Image_Processing_Class::startPicsProcess);
-
-    connect(this,&MainWindow::startRkOnceRequest,
-            rknnInfer,&RKNN_INFERENCER::RunOnce);
-
-    connect(imgProcess_main, &Image_Processing_Class::outputMulImgAIRequest,
-            this, &MainWindow::on_imageboxes_refresh);
-
-    connect(imgProcess_main,&Image_Processing_Class::outputImgProcessedRequest,
-            this,&MainWindow::on_imageboxes_refresh);
-
-    connect(imgProcess_main,&Image_Processing_Class::mainwindowStatusRequest,
-            this,&MainWindow::on_mainwindowStatus_inform);
-
-    connect(this,&MainWindow::changeProcParasRequest,
-            imgProcess_main,&Image_Processing_Class::changeProcPara);
-
-    connect(this, SIGNAL(startMulCamProcessRequest(QImage, int)),
-            imgProcess_main, SLOT(startMulCamProcess(QImage, int)));
-    connect(this, SIGNAL(startMulCamTempRequest(QImage, int)),
-            imgProcess_main, SLOT(startMulCamTemp(QImage, int)));
-}
-
 //void MainWindow::on_buttonOpenVideo_clicked()
 //{
 //    if(ui->buttonOpenVideo->text()=="OpenVideo" && isCapturing1s[0]==false)
@@ -509,6 +466,8 @@ void MainWindow::on_buttonProcess_clicked()
         ui->buttonProcess->setText("StopProcess");
         ui->condComboBox->setEnabled(false);
 
+        rknnInfer->ipcMutex.unlock();
+
 //        if (ui->buttonOpenImageList->text() == "Next")
 //            if(!this->m_imgprocsThread->isInterruptionRequested())
 //                emit startPicsProcessRequest();
@@ -519,6 +478,8 @@ void MainWindow::on_buttonProcess_clicked()
         isDetecting = false;
         ui->buttonProcess->setText("Process");
         ui->condComboBox->setEnabled(true);
+
+        rknnInfer->ipcMutex.lock();
     }
 }
 
@@ -539,6 +500,7 @@ void MainWindow::on_buttonReset_clicked()
     ui->buttonProcess->setText("Process");
     ui->buttonStartCapture->setText("StartCapture");
     imgProcess_main->resetPar();
+    ui->buttonOpenAIProject->setEnabled(true);
 }
 
 void MainWindow::on_textSavingCount_textChanged()
@@ -568,7 +530,7 @@ void MainWindow::on_buttonStartCapture_clicked()
         else
             mppPlayer->mppMutex.unlock();
 
-        ffPlayer->isCapturing=isCapturing2;
+//        ffPlayer->isCapturing=isCapturing2;
 //        if(!ffPlayer->hasStarted)
 //            ffPlayer->startPlay();
 
@@ -581,9 +543,10 @@ void MainWindow::on_buttonStartCapture_clicked()
 
         ui->buttonStartCapture->setText("StartCapture");
 
-        mppPlayer->mppMutex.tryLock();
+//        mppPlayer->mppMutex.tryLock();
+        mppPlayer->mppMutex.lock();
 
-        ffPlayer->isCapturing=isCapturing2;
+//        ffPlayer->isCapturing=isCapturing2;
 
         if((!imgProcess_main->img_inputs[0].empty())&(!imgProcess_main->img_inputs[2].empty()))
         {
@@ -687,85 +650,43 @@ void MainWindow::on_editCheckBox_stateChanged(int state)
 
 void MainWindow::on_imagebox1_refresh()
 {
-    if(!rknnInfer->ipcMutex.tryLock())
-        return;
+//    if(!rknnInfer->ipcMutex.tryLock())
+//        return;
+
+    rknnInfer->img_output1.copyTo(img_output1);
+//    rknnInfer->ipcMutex.unlock();
 
     QImage disImage;
-
-    img_output1=rknnInfer->img_output1;
-    //窗体1显示
+//    窗体1显示
     if(img_output1.channels()==1)
         disImage = QImage(img_output1.data,img_output1.cols,img_output1.rows,
                           img_output1.cols*img_output1.channels(),QImage::Format_Grayscale8);
     else
-    {
-//        cvtColor(img_input1, img_input1, COLOR_BGR2RGB);//图像格式转换
         disImage = QImage(img_output1.data,img_output1.cols,img_output1.rows,
                           img_output1.cols*img_output1.channels(),QImage::Format_BGR888);
-    }
+
     pixmapShow1.setPixmap(QPixmap::fromImage(disImage));
 
-    rknnInfer->ipcMutex.unlock();
-
-//    //界面状态显示
-//    ui->textSavingCount->setStyleSheet("background-color: rgb(255,255,255)");
-
-//    if (imgProcess_main->isSavingImage)
-//        ui->textSavingCount->setStyleSheet("background-color: rgb(176,196,222)");
-//    else
-//        ui->textSavingCount->setStyleSheet("background-color: rgb(255,255,255)");
-//    /*QString str;
-//    str.sprintf("x: %f, y: %f, z: %f", imgProcess_main->pt1.x/1000, imgProcess_main->pt1.y/1000, imgProcess_main->pt1.z/1000);*/
-
-//    QString str;
-//    QString tempStr;
-//    for(int i = 0; i<2; i++)
-//    {
-//        tempStr.sprintf("The %dth camera:\n", i+1);
-//        str += tempStr;
-//        for(int k = 0; k<imgProcess_main->ptsVec[i].size(); k++)
-//        {
-//            tempStr.sprintf("x: %4d, y: %4d\n", imgProcess_main->ptsVec[i][k].x, imgProcess_main->ptsVec[i][k].y);
-//            str += tempStr;
-//        }
-//    }
-//    ui->textBrowser1->setText(str);
-//    str.clear();
-
+//    sleep(1);
+    int gap2recv=time1.elapsed();
+    time1.start();
+    //界面状态显示
+    QString tempStr;
+    tempStr="1st camera refresh time(processed): "+QString::number(gap2recv)+
+            "ms. In which process consumed: "+QString::number(rknnInfer->onceRunTime)+
+            "ms.\n";
+    strOutput1+=tempStr;
+    double fps=1000/double(gap2recv);
+    tempStr="1st camera FPS(processed): "+QString::number(fps,'f',1)+".\n";
+    strOutput1+=tempStr;
+    ui->textBrowser1->setText(strOutput1+strOutput2);
+    strOutput1.clear();
+    tempStr.clear();
 }
 
 void MainWindow::on_imagebox2_refresh()
 {
 
-}
-
-void MainWindow::requestProcess(QImage img, int i)
-{
-    //对应startMulCamProcessRequest(QImage, int)
-    if(imgProcess_main->ipcMutex.tryLock())
-    {
-        emit startMulCamProcessRequest(img, i);
-        imgProcess_main->ipcMutex.unlock();
-    }
-
-    /*//对应startMulCamProcessRequest(vector<QImage>)
-    qimgs[i] = img;
-    if(counts[i]<maxCount)
-        counts[i]++;
-    else
-        counts[i] = 0;
-
-    for(int j = 1; j<4; i++)
-    {
-        if(counts[0] != counts[j])
-            return;
-    }
-
-    if(imgProcess_main->ipcMutex.tryLock())
-    {
-        emit startMulCamProcessRequest(qimgs);
-        imgProcess_main->ipcMutex.unlock();
-    }*/
 }
 
 void MainWindow::slotGetOneFrame1(QImage img)
@@ -775,16 +696,28 @@ void MainWindow::slotGetOneFrame1(QImage img)
         //窗体1显示
         pixmapShow1.setPixmap(QPixmap::fromImage(img));
 //        ui->imagebox1->Adapte();
+        int gap2recv=time1.elapsed();
+        time1.start();
+        QString tempStr;
+        tempStr="1st camera refresh time: "+QString::number(gap2recv)+" ms.\n";
+        strOutput1+=tempStr;
+        double fps=1000/double(gap2recv);
+        tempStr="1st camera FPS: "+QString::number(fps,'f',1)+".\n";
+        strOutput1+=tempStr;
+        ui->textBrowser1->setText(strOutput1+strOutput2);
+        strOutput1.clear();
+        tempStr.clear();
     }
 
     if(isCapturing1 && isDetecting)
     {
+        img_input1=Mat(img.height(), img.width(), CV_8UC3,
+                        img.bits(), img.bytesPerLine());
         if(rknnInfer->ipcMutex.tryLock())
         {
-            rknnInfer->img_input1=Mat(img.height(), img.width(), CV_8UC3,
-                                      img.bits(), img.bytesPerLine());
-            emit startRkOnceRequest();
+            img_input1.copyTo(rknnInfer->img_input1);
             rknnInfer->ipcMutex.unlock();
+            emit startRkOnceRequest();
         }
     }
 }
@@ -801,10 +734,10 @@ void MainWindow::slotGetOneFrame2(QImage img)
 //        QImage2Mat(img, img_inputs[1]);
     }
 
-    if(isCapturing2 && isDetecting)
-    {
-        requestProcess(img, 1);
-    }
+//    if(isCapturing2 && isDetecting)
+//    {
+
+//    }
 }
 
 void MainWindow::setBases(int index)
@@ -848,7 +781,26 @@ void MainWindow::on_condComboBox_activated(int index)
     ui->buttonReset->click();
     workCond = (WorkConditionsEnum)index;
     imgProcess_main->workCond=workCond;
+
+    switch (workCond) {
+    case InferenceRKNN:
+        if(!rknnInfer->hasInited)
+        {
+            QByteArray qba = proj_path.toLocal8Bit();
+            rknnInfer->model_name=qba.data();
+            rknnInfer->InitRKNN();
+            if(rknnInfer->hasInited)
+                ui->buttonOpenAIProject->setEnabled(false);
+        }
+        else
+            ui->buttonOpenAIProject->setEnabled(false);
+        break;
+    default:
+        break;
+    }
+
     iniRW = new QSettings("LastSettings.ini",QSettings::IniFormat);
     iniRW->setValue("WorkCondition/WorkCondition",index);
+    iniRW->setValue("InferenceRKNN/ModelPath",proj_path);
 }
 
