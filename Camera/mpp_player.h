@@ -1,10 +1,7 @@
 #ifndef MPP_PLAYER_H
 #define MPP_PLAYER_H
 
-#include <QThread>
-#include <QImage>
-#include <QMutex>
-
+#include "Camera/general_camera.h"
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,27 +19,21 @@
 #include "../RKNN/utils/drawing.h"
 #include "mk_mediakit.h"
 
-class MPP_PLAYER : public QObject
+class MPP_PLAYER : public General_Camera
 {
     Q_OBJECT
 
 public:
-    explicit MPP_PLAYER();
+    MPP_PLAYER();
     ~MPP_PLAYER();
 
-    QString videoURL;
     int video_type;
-    QMutex mppMutex;
-    bool hasStarted;
     MppDecoder *decoder;
     int width_stride, height_stride,width, height, format,fd;
     void *data;
 
-    void startPlay();
-    void getFrame();
-
-signals:
-    void sig_GetOneFrame(QImage); //每获取到一帧图像 就发送此信号
+    void startCamera() override;
+    void getOneFrame() override;
 
 private:
     mk_player player;
@@ -61,5 +52,6 @@ void API_CALL on_mk_play_event_func(void *user_data, int err_code, const char *e
                                      mk_track tracks[],int track_count);
 void API_CALL on_mk_shutdown_func(void *user_data, int err_code, const char *err_msg,
                                    mk_track tracks[], int track_count);
+
 
 #endif // MPP_PLAYER_H

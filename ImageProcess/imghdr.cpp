@@ -1,23 +1,23 @@
 #include "imghdr.h"
 
-imgHDR::imgHDR(QObject *parent)
-    : QObject{parent}
+IMG_HDR::IMG_HDR()
 {
-    hasInitialized=false;
+    hasInited=false;
+    isDetecting=false;
     idConst=0.0f;
+    onGPU=false;
+    save_count = 1;
+    onceRunTime=0;
 }
 
-imgHDR::~imgHDR()
+IMG_HDR::~IMG_HDR()
 {
     coffMat.release();
-    coffMatC2.release();
     mat4derivate_r1c3.release();
     mat4derivate_r3c1.release();
-    coffMat_cu.release();
-    coffMatC2_cu.release();
 }
 
-void imgHDR::create_coff_mat()
+void IMG_HDR::create_coff_mat()
 {
     float lambda = float(-4 * M_PI * M_PI);
     int half_row = coffMat.rows/2,half_col = coffMat.cols/2;
@@ -76,9 +76,128 @@ void imgHDR::create_coff_mat()
     transpose(mat4derivate_r3c1,mat4derivate_r1c3);
 }
 
-Mat imgHDR::hdr2GrayImgs(Mat img_src_bright, Mat img_src_dark)
+void IMG_HDR::hdr2Imgs()
 {
-    hdrTimer.start();
+    if (img_input1.empty() || img_input2.empty()
+        || (img_input1.size!=img_input2.size))
+        return;
+
+    ipcMutex.lock();
+
+    img_output1 = img_input1.clone();
+    img_output2 = img_input2.clone();
+
+    ipcMutex.unlock();
+
+    if(!hasInited || coffMat.size!=img_input1.size)
+    {
+        usrtimer.start();
+        coffMat = Mat(Size(img_input1.cols,img_input1.rows),
+                               CV_32FC1);
+        if(!onGPU)
+            create_coff_mat();
+
+        hasInited=true;
+        cout<<"Time of coefficient initialization(ms): "<<
+            usrtimer.elapsed()<<endl;
+    }
+
+    if(!onGPU)
+        img_output3=hdr2GrayImgs(img_output1,img_output2);
+
+    double minGray,maxGray;
+    minMaxLoc(img_output3,&minGray,&maxGray);
+    if(maxGray!=minGray)
+        img_output3.convertTo(img_output3,CV_32F,
+                              1/(maxGray-minGray),minGray/(minGray-maxGray));
+    img_output3.convertTo(img_output3,CV_8U,255);
+
+
+//    imshow("result_raw: ",img_output3);
+//    waitKey();
+
+//    if (save_count % max_save_count == 0)
+//    {
+//        imwrite("test1.jpg",img_input1);
+//        imwrite("test2.jpg",img_input2);
+
+//        isSavingImage = true;
+//    }
+//    else
+//        isSavingImage = false;
+
+//    save_count++;
+//    if (save_count > max_save_count)
+//        save_count = 1;
+
+
+    emit outputMulImgAIRequest();
+    return;
+
+}
+
+void IMG_HDR::hdr1Img()
+{
+    if (img_input1.empty())
+        return;
+
+    ipcMutex.lock();
+
+    img_output1 = img_input1.clone();
+
+    ipcMutex.unlock();
+
+    if(!hasInited || coffMat.size!=img_input1.size)
+    {
+        usrtimer.start();
+        coffMat = Mat(Size(img_input1.cols,img_input1.rows),
+                               CV_32FC1);
+        if(!onGPU)
+            create_coff_mat();
+
+        hasInited=true;
+        cout<<"Time of coefficient initialization(ms): "<<
+            usrtimer.elapsed()<<endl;
+    }
+
+    if(!onGPU)
+        img_output2=hdr1GrayImgs(img_output1);
+    else
+        img_output2=hdr1GrayImgs(img_output1);;
+
+    double minGray,maxGray;
+    minMaxLoc(img_output2,&minGray,&maxGray);
+    if(maxGray!=minGray)
+        img_output2.convertTo(img_output2,CV_32F,
+                              1/(maxGray-minGray),minGray/(minGray-maxGray));
+    img_output2.convertTo(img_output2,CV_8U,255);
+    Scalar meanSca=mean(img_output2);
+    cout<<"mean of output: "<<meanSca(0)<<endl;
+
+    //    if (save_count % max_save_count == 0)
+    //    {
+    //        imwrite("test1.jpg",img_input1);
+    //        imwrite("test2.jpg",img_input2);
+
+    //        isSavingImage = true;
+    //    }
+    //    else
+    //        isSavingImage = false;
+
+    //    save_count++;
+    //    if (save_count > max_save_count)
+    //        save_count = 1;
+
+
+    emit outputImgProcessedRequest();
+    return;
+
+}
+
+
+Mat IMG_HDR::hdr2GrayImgs(Mat img_src_bright, Mat img_src_dark)
+{
+    usrtimer.start();
     if (img_src_bright.size!=img_src_dark.size)
         return Mat();
 
@@ -99,13 +218,13 @@ Mat imgHDR::hdr2GrayImgs(Mat img_src_bright, Mat img_src_dark)
     //从最大梯度图像重建原图像
     img_hdr = second_method_solving_Possion(Max_X, Max_Y);
     cout<<"Time of 2 Images HDR(ms) on CPU: "<<
-        hdrTimer.nsecsElapsed()/1000000<<endl;
+        usrtimer.nsecsElapsed()/1000000<<endl;
     return img_hdr;
 }
 
-Mat imgHDR::hdr1GrayImgs(Mat img)
+Mat IMG_HDR::hdr1GrayImgs(Mat img)
 {
-    hdrTimer.start();
+    usrtimer.start();
     if (img.empty())
         return Mat();
 
@@ -124,12 +243,12 @@ Mat imgHDR::hdr1GrayImgs(Mat img)
     //从最大梯度图像重建原图像
     img_hdr = second_method_solving_Possion(Max_X, Max_Y);
     cout<<"Time of 1 Image HDR(ms) on CPU: "<<
-        hdrTimer.nsecsElapsed()/1000000<<endl;
+        usrtimer.nsecsElapsed()/1000000<<endl;
     return img_hdr;
 
 }
 
-void imgHDR::get_max_derivation(Mat bright_img, Mat dark_img, Mat &max_derivativeX, Mat &max_derivativeY)
+void IMG_HDR::get_max_derivation(Mat bright_img, Mat dark_img, Mat &max_derivativeX, Mat &max_derivativeY)
 {
     max_derivativeX = bright_img.clone();
     max_derivativeY = dark_img.clone();
@@ -185,7 +304,7 @@ void imgHDR::get_max_derivation(Mat bright_img, Mat dark_img, Mat &max_derivativ
     max_derivativeX = Max_X; max_derivativeY = Max_Y;
 }
 
-void imgHDR::enhanceDerivation(Mat img, Mat &max_derivativeX, Mat &max_derivativeY)
+void IMG_HDR::enhanceDerivation(Mat img, Mat &max_derivativeX, Mat &max_derivativeY)
 {
     max_derivativeX = img.clone();
     max_derivativeY = img.clone();
@@ -194,7 +313,7 @@ void imgHDR::enhanceDerivation(Mat img, Mat &max_derivativeX, Mat &max_derivativ
     filter2D(img,max_derivativeX, -1,mat4derivate_r1c3);
 }
 
-Mat imgHDR::second_method_solving_Possion(Mat derivativeX, Mat derivativeY)
+Mat IMG_HDR::second_method_solving_Possion(Mat derivativeX, Mat derivativeY)
 {
     if (derivativeX.size != derivativeY.size
         || derivativeX.depth() != derivativeY.depth()

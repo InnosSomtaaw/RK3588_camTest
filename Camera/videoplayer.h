@@ -1,8 +1,8 @@
 ﻿#ifndef VIDEOPLAYER_H
 #define VIDEOPLAYER_H
 
-#include <QThread>
-#include <QImage>
+#include <stdio.h>
+#include "Camera/general_camera.h"
 
 extern "C"
 {
@@ -13,29 +13,21 @@ extern "C"
 #include <libavutil/imgutils.h>
 }
 
-#include <stdio.h>
-#include<iostream>
-using namespace std;
-
-class VideoPlayer : public QThread
+class VideoPlayer : public General_Camera
 {
     Q_OBJECT
 
 public:
-    explicit VideoPlayer();
+    VideoPlayer();
     ~VideoPlayer();
 
-    void startPlay();
-
-signals:
-    void sig_GetOneFrame(QImage); //每获取到一帧图像 就发送此信号
+    void startCamera() override;
 
 protected:
-    void run();
+    void run() override;
 
 public:
-    bool mainwindowIsStopProcess,hasStarted,isCapturing,isDetecting,hasFinished;
-    QString videoURL;
+    bool mainwindowIsStopProcess;
 
 };
 

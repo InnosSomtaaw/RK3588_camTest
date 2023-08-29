@@ -1,185 +1,81 @@
 #include "image_processing.h"
 
-Image_Processing_Class::Image_Processing_Class(QObject *parent)
+Image_Processing_Class::Image_Processing_Class()
 {
-//    img_input1,img_output1, img_input2, img_output2,img_output3 = NULL;
-    initImgInOut();
-    ai_ini_flg=false;cam1Refreshed=false;cam2Refreshed = false;
+    img_input1,img_output1, img_input2, img_output2,img_output3 = NULL;
+    hasInited=false;cam1Refreshed=false;cam2Refreshed = false;isDetecting=false;
     img_filenames = new QList<QFileInfo>();
 
-    save_count = 0,max_save_count =100;
+    save_count = 1,max_save_count =100,onceRunTime=0;
 
     mainwindowIsNext=false;mainwindowIsStopProcess=false;isSavingImage =false;
-
-    basePTs = new QQueue<Point>();
-    islifting = new QQueue<bool>();
-
-    hdrProc=new imgHDR();
-
+    onGPU=false;
 }
 
 Image_Processing_Class::~Image_Processing_Class()
 {
-    delete hdrProc;
+
 }
 
-void Image_Processing_Class::initImgInOut()
+void Image_Processing_Class::iniImgProcessor()
 {
-    for(int i = 0; i<4; i++)
-    {
-        Mat imgIn, imgOut;
-        img_inputs.push_back(imgIn.clone());
-        img_outputs.push_back(imgOut.clone());
-        inputFlags.push_back(false);
-        vector<Point> pts;
-        ptsVec.push_back(pts);
-    }
+
 }
+
 
 void Image_Processing_Class::resetPar()
 {
     mainwindowIsNext=false;mainwindowIsStopProcess=false;isSavingImage =false;
     save_count=0;
-    ai_ini_flg=false;cam1Refreshed=false;cam2Refreshed = false;
+    hasInited=false;cam1Refreshed=false;cam2Refreshed = false;
 
     img_filenames->clear();
-    basePTs->clear();
-    islifting->clear();
-    hdrProc->hasInitialized=false;
+
+//    hdrProc->hasInitialized=false;
 }
 
-void Image_Processing_Class::hdr2Imgs(bool onGPU)
+void Image_Processing_Class::generalProcess()
 {
-    if (img_input1.empty() || img_input2.empty()
-        || (img_input1.size!=img_input2.size))
+    usrtimer.start();
+    if (img_input1.empty() || !ipcMutex.tryLock())
         return;
-
-    ipcMutex.lock();
-
-    img_output1 = img_input1.clone();
-    img_output2 = img_input2.clone();
-
+    img_output2 = img_input1.clone();
     ipcMutex.unlock();
 
-    if(!hdrProc->hasInitialized ||
-        hdrProc->coffMat.size!=img_input1.size)
+    vector<Point> cont;
+    if(onGPU)
     {
-        usrtimer.start();
-        hdrProc->coffMat = Mat(Size(img_input1.cols,img_input1.rows),
-                               CV_32FC1);
-        if(!onGPU)
-            hdrProc->create_coff_mat();
+        UMat umIn,umTemp,umOut;
+        img_output2.copyTo(umIn);
+        pyrDown(umIn,umTemp);
 
-        hdrProc->hasInitialized=true;
-        cout<<"Time of coefficient initialization(ms): "<<
-            usrtimer.elapsed()<<endl;
+        bilateralFilter(umTemp,umOut,5,40,75);
+        adaptiveThreshold(umOut,umTemp,255,ADAPTIVE_THRESH_GAUSSIAN_C,THRESH_BINARY,11,5);
+
+//        Mat morpKern=getStructuringElement(MORPH_RECT,Size(11,11));
+//        morphologyEx(umTemp,umOut,MORPH_CLOSE,morpKern);
+//        morpKern.release();
+//        cout<<"Test Morphology time: "<<usrtimer.elapsed()<<" ms with ocl "<<onGPU<<endl;
+
+        pyrUp(umTemp,umOut);
+//        umTemp.release();
+//        umIn.release();
+        umOut.copyTo(img_output1);
     }
-
-    if(!onGPU)
-        img_output3=hdrProc->hdr2GrayImgs(img_output1,img_output2);
-
-    double minGray,maxGray;
-    minMaxLoc(img_output3,&minGray,&maxGray);
-    if(maxGray!=minGray)
-        img_output3.convertTo(img_output3,CV_32F,
-                              1/(maxGray-minGray),minGray/(minGray-maxGray));
-    img_output3.convertTo(img_output3,CV_8U,255);
-
-
-//    imshow("result_raw: ",img_output3);
-//    waitKey();
-
-//    if (save_count % max_save_count == 0)
-//    {
-//        imwrite("test1.jpg",img_input1);
-//        imwrite("test2.jpg",img_input2);
-
-//        isSavingImage = true;
-//    }
-//    else
-//        isSavingImage = false;
-
-//    save_count++;
-//    if (save_count > max_save_count)
-//        save_count = 1;
-
-
-    emit outputMulImgAIRequest();
-    return;
-}
-
-void Image_Processing_Class::hdrImg(bool onGPU)
-{
-    if (img_input1.empty())
-        return;
-
-    ipcMutex.lock();
-
-    img_output1 = img_input1.clone();
-
-    ipcMutex.unlock();
-
-    if(!hdrProc->hasInitialized ||
-        hdrProc->coffMat.size!=img_input1.size)
-    {
-        usrtimer.start();
-        hdrProc->coffMat = Mat(Size(img_input1.cols,img_input1.rows),
-                               CV_32FC1);
-        if(!onGPU)
-            hdrProc->create_coff_mat();
-
-        hdrProc->hasInitialized=true;
-        cout<<"Time of coefficient initialization(ms): "<<
-            usrtimer.elapsed()<<endl;
-    }
-
-    if(!onGPU)
-        img_output2=hdrProc->hdr1GrayImgs(img_output1);
     else
-        img_output2=hdrProc->hdr1GrayImgs(img_output1);;
-
-    double minGray,maxGray;
-    minMaxLoc(img_output2,&minGray,&maxGray);
-    if(maxGray!=minGray)
-        img_output2.convertTo(img_output2,CV_32F,
-                              1/(maxGray-minGray),minGray/(minGray-maxGray));
-    img_output2.convertTo(img_output2,CV_8U,255);
-    Scalar meanSca=mean(img_output2);
-    cout<<"mean of output: "<<meanSca(0)<<endl;
-
-    //    if (save_count % max_save_count == 0)
-    //    {
-    //        imwrite("test1.jpg",img_input1);
-    //        imwrite("test2.jpg",img_input2);
-
-    //        isSavingImage = true;
-    //    }
-    //    else
-    //        isSavingImage = false;
-
-    //    save_count++;
-    //    if (save_count > max_save_count)
-    //        save_count = 1;
-
-
-    emit outputImgProcessedRequest();
-    return;
-
-}
-
-void Image_Processing_Class::resizeCompare()
-{
-    if (img_input1.empty())
-        return;
-
-    ipcMutex.lock();
-    //测试线程：
     {
-        img_output1 = img_input1.clone();
-        Laplacian(img_output1,img_output1,img_output1.depth());
-//        resize(img_output1,img_output1,Size(2000,470));
+        pyrDown(img_output2,img_output3);
 
-        ipcMutex.unlock();
+        bilateralFilter(img_output3,img_output2,5,40,75);
+        adaptiveThreshold(img_output2,img_output3,255,ADAPTIVE_THRESH_GAUSSIAN_C,THRESH_BINARY,11,5);
+
+//        Mat morpKern=getStructuringElement(MORPH_RECT,Size(11,11));
+//        morphologyEx(img_output3,img_output2,MORPH_CLOSE,morpKern);
+//        morpKern.release();
+//        cout<<"Test Morphology time: "<<usrtimer.elapsed()<<" ms with ocl "<<onGPU<<endl;
+
+        pyrUp(img_output3,img_output1);
+    }
 
 //        if (save_count % max_save_count == 0)
 //        {
@@ -193,28 +89,17 @@ void Image_Processing_Class::resizeCompare()
 //        if (save_count > max_save_count)
 //            save_count = 1;
 
-        emit outputImgProcessedRequest();
-        return;
-    }
-
+    emit outputImgProcessedRequest();
+    onceRunTime = usrtimer.elapsed();
+//    cout<<"Test OCL time: "<<onceRunTime<<" ms with ocl "<<onGPU<<endl;
 }
 
 void Image_Processing_Class::startProcessOnce()
 {
     switch (workCond) {
-    case HDRfrom2Img:
-        hdr2Imgs();
-        break;
-    case HDRfrom2ImgGPU:
-        hdr2Imgs(true);
-        break;
-    case ResizeShow:
-        resizeCompare();
-        break;
-    case HDRfrom1Img:
-        hdrImg();
-        break;
+    case GeneralProcess:
     default:
+        generalProcess();
         break;
     }
 }
@@ -320,14 +205,14 @@ void Image_Processing_Class::testMulStereoMatcher()
 
 void Image_Processing_Class::changeProcPara(QString qstr, int wc)
 {
-    switch (wc) {
-    case WorkConditionsEnum::HDRfrom1Img:
-    case WorkConditionsEnum::HDRfrom1ImgGPU:
-        hdrProc->idConst=qstr.toFloat();
-        break;
-    default:
-        break;
-    }
+//    switch (wc) {
+//    case WorkConditionsEnum::HDRfrom1Img:
+//    case WorkConditionsEnum::HDRfrom1ImgGPU:
+//        hdrProc->idConst=qstr.toFloat();
+//        break;
+//    default:
+//        break;
+//    }
 
 }
 

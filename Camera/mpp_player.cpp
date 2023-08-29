@@ -2,13 +2,16 @@
 
 MPP_PLAYER::MPP_PLAYER()
 {
+    isCapturing = false; hasFinished = false;hasStarted=false;
+    video_type=265;
     decoder=new MppDecoder;
     player = mk_player_create();
-    hasStarted=false;
 }
 
 MPP_PLAYER::~MPP_PLAYER()
 {
+    isCapturing=false;
+    hasFinished=true;
     if (decoder != nullptr)
     {
       delete(decoder);
@@ -20,9 +23,9 @@ MPP_PLAYER::~MPP_PLAYER()
         free(rgb_buf);
 }
 
-void MPP_PLAYER::startPlay()
+void MPP_PLAYER::startCamera()
 {
-    QByteArray qba = videoURL.toLocal8Bit();
+    QByteArray qba = camURL.toLocal8Bit();
     const char *video_name=qba.data();
 
     decoder->Init(video_type, 30 ,(void *)this);
@@ -40,14 +43,14 @@ void MPP_PLAYER::startPlay()
     hasStarted=true;
 }
 
-void MPP_PLAYER::getFrame()
+void MPP_PLAYER::getOneFrame()
 {
     memset(&src, 0, sizeof(src));
     memset(&dst, 0, sizeof(dst));
     memset(&src_rect, 0, sizeof(src_rect));
     memset(&dst_rect, 0, sizeof(dst_rect));
 
-    printf("cvtcolor with RGA!\n");
+//    printf("cvtcolor with RGA!\n");
 
     rgb_buf = malloc(sizeof(uchar)*width * height * 3);
     memset(rgb_buf, 0, sizeof(uchar)*width * height * 3);
@@ -67,7 +70,8 @@ void MPP_PLAYER::getFrame()
 
     if(rgb_buf!=nullptr)
         free(rgb_buf);
-    emit sig_GetOneFrame(image);  //发送信号
+    emit sigGetOneFrame(image);  //发送信号
+
 }
 
 void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int height_stride,
@@ -81,16 +85,16 @@ void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int 
     ctx->format=format;
     ctx->fd=fd;
     ctx->data=data;
-    ctx->getFrame();
+    ctx->getOneFrame();
 }
 
 void API_CALL on_track_frame_out(void *user_data, mk_frame frame)
 {
     MPP_PLAYER *ctx=(MPP_PLAYER*)user_data;
-    printf("on_track_frame_out ctx=%p\n", ctx);
+//    printf("on_track_frame_out ctx=%p\n", ctx);
     const char* data = mk_frame_get_data(frame);
     size_t size = mk_frame_get_data_size(frame);
-    printf("decoder=%p\n", ctx->decoder);
+//    printf("decoder=%p\n", ctx->decoder);
     ctx->decoder->Decode((uint8_t*)data, size, 0);
 }
 
@@ -119,3 +123,5 @@ void API_CALL on_mk_shutdown_func(void *user_data, int err_code, const char *err
 {
     printf("play interrupted: %d %s", err_code, err_msg);
 }
+
+

@@ -1,6 +1,8 @@
 #ifndef RKNN_INFERENCER_H
 #define RKNN_INFERENCER_H
 
+#include "ImageProcess/image_processing.h"
+
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,14 +13,9 @@
 
 #include "RgaUtils.h"
 #include "im2d.h"
-#include "opencv2/core/core.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/imgproc.hpp"
 #include "./utils/postprocess.h"
 #include "rga.h"
 #include "rknn_api.h"
-
-#include "ImageProcess/image_processing.h"
 
 #define PERF_WITH_POST 1
 
@@ -26,10 +23,9 @@ class RKNN_INFERENCER : public Image_Processing_Class
 {
     Q_OBJECT
 public:
-    explicit RKNN_INFERENCER(QObject *parent = nullptr);
+    RKNN_INFERENCER();
     ~RKNN_INFERENCER();
 
-    bool hasInited;
     int            status     = 0;
     char*          model_name = NULL;
     rknn_context   ctx;
@@ -41,7 +37,6 @@ public:
     const float    box_conf_threshold = BOX_THRESH;
     struct timeval start_time, stop_time;
     int            ret;
-    int onceRunTime;
 
     static void dump_tensor_attr(rknn_tensor_attr* attr);
     static unsigned char* load_data(FILE* fp, size_t ofst, size_t sz);
@@ -53,6 +48,9 @@ public:
 
 public slots:
     int RunOnce();
+
+    void iniImgProcessor() override;
+    void startProcessOnce() override;
 
 private:
     int            model_data_size = 0;
