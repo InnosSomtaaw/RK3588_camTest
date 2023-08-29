@@ -16,9 +16,10 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    Camera/general_camera.cpp \
     Camera/videoplayer.cpp \
     Camera/mpp_player.cpp \
-    ImageProcess/cv_stereomatcher.cpp \
+    Camera/MvCamera.cpp \
     ImageProcess/image_processing.cpp \
     ImageProcess/imghdr.cpp \
     RKNN/rknn_inferencer.cpp \
@@ -28,12 +29,13 @@ SOURCES += \
     RKNN/utils/postprocess.cc \
     main.cpp \
     mainwindow.cpp \
-    pictureview.cpp
+    pictureview.cpp \
 
 HEADERS += \
+    Camera/general_camera.h \
     Camera/videoplayer.h \
     Camera/mpp_player.h \
-    ImageProcess/cv_stereomatcher.h \
+    Camera/MvCamera.h \
     ImageProcess/image_processing.h \
     ImageProcess/imghdr.h \
     RKNN/rknn_inferencer.h \
@@ -42,7 +44,7 @@ HEADERS += \
     RKNN/utils/mpp_encoder.h \
     RKNN/utils/postprocess.h \
     mainwindow.h \
-    pictureview.h
+    pictureview.h \
 
 FORMS += \
     mainwindow.ui
@@ -70,7 +72,9 @@ unix:!macx: LIBS += \
 -L/home/toybrick/librknn_api/lib/ -lrockchip_mpp \
 -L/home/toybrick/librknn_api/lib/ -lrga \
 -L/home/toybrick/librknn_api/lib/ -lmk_api \
--L/home/toybrick/librknn_api/lib/ -lrknnrt
+-L/home/toybrick/librknn_api/lib/ -lrknnrt \
+-L/opt/MVS/lib/aarch64 -lMvCameraControl \
+-L/opt/MVS/bin \
 
 INCLUDEPATH += \
 /home/toybrick/ffmpegInstall/include \
@@ -79,11 +83,13 @@ INCLUDEPATH += \
 /home/toybrick/3rdparty/mpp/include \
 /home/toybrick/3rdparty/rga/RK3588/include \
 /home/toybrick/3rdparty/zlmediakit/include \
+/opt/MVS/include \
 DEPENDPATH += \
 /home/toybrick/ffmpegInstall/include \
 /home/toybrick/opencv-build/install/include/opencv4 \
 /home/toybrick/librknn_api/include \
 /home/toybrick/3rdparty/mpp/include \
 /home/toybrick/3rdparty/rga/RK3588/include \
-/home/toybrick/3rdparty/zlmediakit/include
+/home/toybrick/3rdparty/zlmediakit/include \
+/opt/MVS/include \
 

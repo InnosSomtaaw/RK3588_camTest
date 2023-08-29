@@ -4,11 +4,12 @@
 #include <QMainWindow>
 #include <QFileDialog>
 #include <QtWidgets>
-#include <QElapsedTimer>
 
-#include "ImageProcess/image_processing.h"
 #include "Camera/videoplayer.h"
 #include "Camera/mpp_player.h"
+#include "Camera/MvCamera.h"
+#include "ImageProcess/image_processing.h"
+#include "ImageProcess/imghdr.h"
 #include "RKNN/rknn_inferencer.h"
 
 QT_BEGIN_NAMESPACE
@@ -23,7 +24,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    bool isDetecting,isCapturing1,isCapturing2;
+    bool isDetecting,detecOnly1st,detecOnly2nd;
     QElapsedTimer time1,time2;
 
 private:
@@ -32,54 +33,44 @@ private:
 
     //网络相机参数
     vector<QString> urls;
-
+    MV_CC_DEVICE_INFO_LIST  m_stDevList; 
     //AI工程相关文件路径
     QString proj_path;
 
     vector<Point2i> basePoints;
     WorkConditionsEnum workCond;
     QSettings *iniRW;
-
-    //图像处理类
-    Image_Processing_Class *imgProcess_main;
-    //图像处理线程
-    QThread *m_imgprocsThread;
-
-    //数字相机类（ffmpeg读取）
-    VideoPlayer *ffPlayer;
-
     //数字相机类（mpp读取）
-    MPP_PLAYER *mppPlayer;
-    //数字相机线程
-    QThread *playerThread;
-
-    //RKNN类
-    RKNN_INFERENCER *rknnInfer;
-    //RKNN线程
-    QThread *rknnThread;
+    MPP_PLAYER *cam1;
+    //数字相机类（HIKVISION相机）
+    CMvCamera *cam2;
+//    //数字相机类（ffmpeg读取）
+//    VideoPlayer *cam2;
+    //图像处理类
+    Image_Processing_Class *imgProcessor1;
+    Image_Processing_Class *imgProcessor2;
+    RKNN_INFERENCER *imgProcRKNN;
+    IMG_HDR *imgProcHDR;
+    //图像处理线程
+    QThread *imgProThread1,*imgProThread2;
 
     QGraphicsScene scene1, scene2, scene3;
     QGraphicsPixmapItem pixmapShow1, pixmapShow2, pixmapShow3;
     QString strOutput1,strOutput2;
-
-    //初始化相机参数设置
-    void initCamSettings();
-    //初始化图像输入输出
-    void initImageInOuts();
-    //初始化图像显示盒子
+    //显示窗体初始化
     void initImageBoxes();
-    //初始化AI文件路径
-    void initDefaultAIPaths();
-    //初始化图像处理进程
-    void initImageProcess();
-    //初始化相机/视频类
-    void initVideoPlayers();
+    //初始化程序工况
+    void initWorkCondition();
+    //文本输出初始化
+    void initTextBrowsers();
     //初始化参数设置
     void initBaseSettings();
-    //初始化文本输出
-    void initTextBrowsers();
-    //初始化工况
-    void initWorkCondition();
+    //图像处理类初始化
+    void initImageProcess();
+    //初始化网络相机设置
+    void initCamSettings();
+    //数字相机类初始化
+    void initVideoPlayers();
 
     //前方摄像头图像鼠标事件响应函数
     void onMouseFront(int event, int x, int y, int flags);
@@ -99,10 +90,6 @@ private slots:
     void on_imagebox2_OpenImage();
     //选择AI工程和节点按钮槽
     void on_buttonOpenAIProject_clicked();
-    //主窗体状态告知槽
-    void on_mainwindowStatus_inform();
-    //打开视频按钮槽
-//    void on_buttonOpenVideo_clicked();
     //重置按钮槽
      void on_buttonReset_clicked();
     //实时处理按钮槽
@@ -132,15 +119,10 @@ private slots:
 
 signals:
     //开始单次处理信号
-    void startRkOnceRequest();
+    void startCam1Request();
+    void startCam2Request();
     //开始图片组处理信号
     void startPicsProcessRequest();
-    //开始多相机处理信号，这种结构不好用，接收方lock不到
-    void startMulCamProcessRequest(vector<QImage>);
-    //开始多相机处理信号
-    void startMulCamProcessRequest(QImage, int);
-    //开始多相机临时图像保存信号
-    void startMulCamTempRequest(QImage, int);
     //处理参数改变信号
     void changeProcParasRequest(QString,int);
 };

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.5.2, 2023-08-24T05:23:05. -->
+<!-- Written by QtCreator 4.5.2, 2023-08-29T08:00:38. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -256,8 +256,8 @@
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">RemoteLinux.DirectUploadStep</value>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedFiles">
-       <value type="QString">/mnt/d/WORKS/build-RK3588_camTest-qt_5_15_2_aarch64_rockchip930_linux-Release/RK3588_camTest</value>
        <value type="QString">/mnt/d/WORKS/build-RK3588_camTest-qt_5_15_2_aarch64_rockchip930_linux-Debug/RK3588_camTest</value>
+       <value type="QString">/mnt/d/WORKS/build-RK3588_camTest-qt_5_15_2_aarch64_rockchip930_linux-Release/RK3588_camTest</value>
        <value type="QString">/mnt/d/WORKS/build-RK3588_camTest-qt_5_15_2_aarch64_rockchip930_linux-Debug/RK3588_camTest</value>
       </valuelist>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedHosts">
@@ -276,8 +276,8 @@
        <value type="QString"></value>
       </valuelist>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedTimes">
-       <value type="QDateTime">2023-08-24T05:20:32</value>
-       <value type="QDateTime">2023-08-23T08:02:34</value>
+       <value type="QDateTime">2023-08-29T07:24:52</value>
+       <value type="QDateTime">2023-08-29T07:39:21</value>
        <value type="QDateTime">2023-08-21T02:30:39</value>
       </valuelist>
       <value type="bool" key="RemoteLinux.GenericDirectUploadStep.IgnoreMissingFiles">false</value>
@@ -349,8 +349,8 @@
     </valuelist>
     <value type="int" key="PE.EnvironmentAspect.Base">1</value>
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes">
-     <value type="QString">LD_LIBRARY_PATH=/home/toybrick/opencv-build/install/lib:/home/toybrick/ffmpegInstall/lib:/home/toybrick/Works/lib</value>
      <value type="QString">DISPLAY=192.168.137.1:0</value>
+     <value type="QString">LD_LIBRARY_PATH=/opt/MVS/lib/aarch64:/home/toybrick/opencv-build/install/lib:/home/toybrick/ffmpegInstall/lib:/home/toybrick/librknn_api/lib</value>
     </valuelist>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">RK3588_camTest (在远端设备上)</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>

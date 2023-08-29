@@ -8,15 +8,15 @@ VideoPlayer::VideoPlayer()
 
 VideoPlayer::~VideoPlayer()
 {
-
+    isCapturing=false;
+    hasFinished=true;
 }
 
-void VideoPlayer::startPlay()
+void VideoPlayer::startCamera()
 {
     hasStarted=true;
     ///调用 QThread 的start函数 将会自动执行下面的run函数 run函数是一个新的线程
     this->start();
-
 }
 
 void VideoPlayer::run()
@@ -46,7 +46,7 @@ void VideoPlayer::run()
     av_dict_set(&avdic,option_key2,option_value2,0);
     ///rtsp地址，可根据实际情况修改
 //    char url[]="rtsp://admin:Lead123456@192.168.137.98:554/h265/ch1/main/av_stream";
-    QByteArray qba = videoURL.toLocal8Bit();
+    QByteArray qba = camURL.toLocal8Bit();
     char *url=qba.data();
 
     if (avformat_open_input(&pFormatCtx, url, NULL, &avdic) != 0) {
@@ -139,7 +139,7 @@ void VideoPlayer::run()
                 //把这个RGB数据 用QImage加载
                 QImage tmpImg((uchar *)buf,pAVctx->width,pAVctx->height,QImage::Format_RGB32);
                 QImage image = tmpImg.copy(); //把图像复制一份 传递给界面显示
-                emit sig_GetOneFrame(image);  //发送信号
+                emit sigGetOneFrame(image);  //发送信号
             }
         }
         av_packet_unref(packet);//释放资源,否则内存会一直上升

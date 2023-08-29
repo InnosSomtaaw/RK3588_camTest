@@ -11,21 +11,21 @@
 #include <QElapsedTimer>
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/ocl.hpp>
 
-#include "cv_stereomatcher.h"
-#include "imghdr.h"
 
 QT_BEGIN_NAMESPACE
 using namespace cv;
 using namespace std;
 QT_END_NAMESPACE
+
 enum WorkConditionsEnum
 {
     HDRfrom2Img = 0,
     HDRfrom2ImgGPU,
     HDRfrom1Img,
     HDRfrom1ImgGPU,
-    ResizeShow,
+    GeneralProcess,
     InferenceRKNN,
 };
 void QImage2Mat(QImage img, Mat& imgMat);
@@ -35,7 +35,7 @@ class Image_Processing_Class : public QObject
 {
     Q_OBJECT
 public:
-    explicit  Image_Processing_Class(QObject *parent = 0);
+     Image_Processing_Class();
     ~Image_Processing_Class();
 
 signals:
@@ -47,8 +47,10 @@ signals:
     void mainwindowStatusRequest();
 
 public slots:
+    //
+    virtual void iniImgProcessor();
     //开始单次处理槽
-    void startProcessOnce();
+    virtual void startProcessOnce();
     //开始图片组处理槽
     void startPicsProcess();
     void startMulCamTemp(QImage recvImg, int i);
@@ -64,9 +66,10 @@ public:
     Mat img_input1,img_output1, img_input2, img_output2,img_output3;
     vector<Mat> img_inputs, img_outputs;
     vector<bool> inputFlags;
-    bool ai_ini_flg,cam1Refreshed,cam2Refreshed;
-    int save_count,max_save_count;
+    bool hasInited,cam1Refreshed,cam2Refreshed,isDetecting;
+    int save_count,max_save_count,onceRunTime;
     bool mainwindowIsNext,mainwindowIsStopProcess,isSavingImage;
+    bool onGPU;
 
     WorkConditionsEnum workCond;
     QMutex ipcMutex;
@@ -85,16 +88,11 @@ public:
 
     //处理图片组
     bool processFilePic();
-    //初始化输入输出图像
-    void initImgInOut();
     //重置参数
     void resetPar();
 
 private:
-    imgHDR *hdrProc;
-    void hdr2Imgs(bool onGPU=false);
-    void hdrImg(bool onGPU=false);
-    void resizeCompare();
+    void generalProcess();
 
 };
 

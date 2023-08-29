@@ -1,41 +1,38 @@
 #ifndef IMGHDR_H
 #define IMGHDR_H
 
-#include <QObject>
-#include <QElapsedTimer>
+#include "ImageProcess/image_processing.h"
 
-#include <opencv2/opencv.hpp>
-
-QT_BEGIN_NAMESPACE
-using namespace cv;
-using namespace std;
-QT_END_NAMESPACE
-
-class imgHDR : public QObject
+class IMG_HDR : public Image_Processing_Class
 {
     Q_OBJECT
 public:
-    explicit imgHDR(QObject *parent = nullptr);
-    ~imgHDR();
+    explicit IMG_HDR();
+    ~IMG_HDR();
 
-signals:
+//signals:
+//    //刷新主窗体显示后图片信号
+//    void outputImgProcessedRequest();
+//    //刷新主窗体多画面显示信号AI测试用
+//    void outputMulImgAIRequest();
+//    //请求主窗体按钮状态信号
+//    void mainwindowStatusRequest();
 
 public:
-    bool hasInitialized;
     Mat coffMat,coffMatC2,mat4derivate_r3c1,mat4derivate_r1c3;
-    cuda::GpuMat coffMat_cu,coffMatC2_cu;
     float idConst;
 
-    //计时器
-    QElapsedTimer hdrTimer;
-
     void create_coff_mat();
+
+    void hdr2Imgs();
+    void hdr1Img();
+
+private:
     //双灰度图片HDR合成
     Mat hdr2GrayImgs(Mat img_src_bright, Mat img_src_dark);
     //单灰度图片HDR合成
     Mat hdr1GrayImgs(Mat img);
 
-private:
     //获取最大梯度图像
     void get_max_derivation(Mat bright_img, Mat dark_img,
                             Mat &max_derivativeX, Mat &max_derivativeY);
@@ -45,5 +42,4 @@ private:
     Mat second_method_solving_Possion(Mat derivativeX, Mat derivativeY);
 
 };
-
 #endif // IMGHDR_H
