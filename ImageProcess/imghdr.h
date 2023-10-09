@@ -27,6 +27,8 @@ public:
     void hdr2Imgs();
     void hdr1Img();
 
+    void startProcessOnce() override;
+
 private:
     //双灰度图片HDR合成
     Mat hdr2GrayImgs(Mat img_src_bright, Mat img_src_dark);

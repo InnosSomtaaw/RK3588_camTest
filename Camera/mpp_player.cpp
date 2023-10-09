@@ -6,12 +6,15 @@ MPP_PLAYER::MPP_PLAYER()
     video_type=265;
     decoder=new MppDecoder;
     player = mk_player_create();
+    hasAllocated=false;
 }
 
 MPP_PLAYER::~MPP_PLAYER()
 {
     isCapturing=false;
     hasFinished=true;
+    hasStarted=false;
+    hasAllocated=false;
     if (decoder != nullptr)
     {
       delete(decoder);
@@ -40,38 +43,36 @@ void MPP_PLAYER::startCamera()
     mk_player_set_on_result(player, on_mk_play_event_func, (void *)this);
     mk_player_set_on_shutdown(player, on_mk_shutdown_func, (void *)this);
     mk_player_play(player, video_name);
-    hasStarted=true;
-}
 
-void MPP_PLAYER::getOneFrame()
-{
     memset(&src, 0, sizeof(src));
     memset(&dst, 0, sizeof(dst));
     memset(&src_rect, 0, sizeof(src_rect));
     memset(&dst_rect, 0, sizeof(dst_rect));
 
-//    printf("cvtcolor with RGA!\n");
+    hasStarted=true;
+}
 
-    rgb_buf = malloc(sizeof(uchar)*width * height * 3);
-    memset(rgb_buf, 0, sizeof(uchar)*width * height * 3);
-
+void MPP_PLAYER::run()
+{
+    if(!hasAllocated)
+    {
+        rgb_buf = malloc(sizeof(uchar)*width * height * 3);
+        hasAllocated=true;
+    }
     src = wrapbuffer_virtualaddr((void*)data, width, height, format, width_stride, height_stride);
     dst = wrapbuffer_virtualaddr((void*)rgb_buf, width, height, RK_FORMAT_RGB_888);
-    int ret = imcheck(src, dst, src_rect, dst_rect);
-    if (IM_STATUS_NOERROR != ret) {
-      printf("%d, check error! %s", __LINE__, imStrError((IM_STATUS)ret));
-      return;
+    STATUS = imcheck(src, dst, src_rect, dst_rect);
+    if (IM_STATUS_NOERROR != STATUS) {
+        printf("%d, check error! %s", __LINE__, imStrError(STATUS));
+        return;
     }
-    IM_STATUS STATUS = imcvtcolor(src, dst,RK_FORMAT_YCbCr_420_SP,RK_FORMAT_RGB_888,
-                                  IM_YUV_TO_RGB_BT709_LIMIT);
+    rfd=-1;
+    STATUS = imcvtcolor(src, dst,RK_FORMAT_YCbCr_420_SP,RK_FORMAT_RGB_888,
+                                  IM_YUV_TO_RGB_BT601_FULL,1,&rfd);
 
-    QImage disImage = QImage((uchar*)rgb_buf,width,height,width*3,QImage::Format_RGB888);
-    QImage image = disImage.copy(); //把图像复制一份 传递给界面显示
+    QImage image = QImage((uchar*)rgb_buf,width,height,width*3,QImage::Format_RGB888);
 
-    if(rgb_buf!=nullptr)
-        free(rgb_buf);
     emit sigGetOneFrame(image);  //发送信号
-
 }
 
 void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int height_stride,
@@ -85,7 +86,8 @@ void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int 
     ctx->format=format;
     ctx->fd=fd;
     ctx->data=data;
-    ctx->getOneFrame();
+//    ctx->getOneFrame();
+    ctx->start();
 }
 
 void API_CALL on_track_frame_out(void *user_data, mk_frame frame)

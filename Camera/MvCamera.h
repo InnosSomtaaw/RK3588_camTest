@@ -4,7 +4,6 @@
 #ifndef _MV_CAMERA_H_
 #define _MV_CAMERA_H_
 
-//#include <string.h>
 #include "Camera/general_camera.h"
 #include <QMessageBox>
 #include "MvCameraControl.h"
@@ -15,17 +14,22 @@
 
 class CMvCamera : public General_Camera
 {
+    Q_OBJECT
+
 public:
      CMvCamera();
     ~CMvCamera();
 
-//    int isCapturing,hasFinished,hasStarted;
+     int nIndex;
      MV_CC_DEVICE_INFO_LIST  m_stDevList;
-     unsigned char * pData;
      MV_FRAME_OUT_INFO_EX* pFrameInfo;
+     unsigned char * pData;
+     bool froceRaw;
 
      void startCamera() override;
      void getOneFrame() override;
+
+     void run() override;
 
     // ch:获取SDK版本号 | en:Get SDK Version
     static int GetSDKVersion();
@@ -104,16 +108,19 @@ public:
     // ch:保存图片为文件 | en:Save the image as a file
     //int SaveImageToFile(MV_SAVE_IMG_TO_FILE_PARAM* pstParam);
 
+    bool IsColor(MvGvspPixelType enType);
+    bool IsMono(MvGvspPixelType enType);
 private:
 
     void* m_hDevHandle;
-
+    unsigned int m_nConvertDataSize;
+    unsigned char *m_ConvertData;
 };
 
 void __stdcall ImageCallBack(unsigned char * pData, MV_FRAME_OUT_INFO_EX* pFrameInfo,
                              void* pUser);
 
 // ch:显示错误信息 | en:Show error message
-void ShowErrorMsg(QString csMessage, int nErrorNum);
+void ShowErrorMsg(QString csMessage, unsigned int nErrorNum);
 
 #endif//_MV_CAMERA_H_

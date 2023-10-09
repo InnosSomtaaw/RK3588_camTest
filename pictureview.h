@@ -21,7 +21,6 @@ public:
     explicit PictureView(QWidget *parent = nullptr);
     void Adapte();
 public:
-    QString img_Name_input;
 
 protected:
     void wheelEvent(QWheelEvent *event);
@@ -32,7 +31,8 @@ private:
     double mZoom;
 
 signals:
-    void outputImgProperty_request();
+    void loadImgRequest();
+    void saveImgRequest();
 
 private slots:
     void slotAdapte();
