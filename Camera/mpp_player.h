@@ -33,7 +33,7 @@ public:
     void *data;
 
     void startCamera() override;
-    void getOneFrame() override;
+    void run() override;
 
 private:
     mk_player player;
@@ -42,7 +42,10 @@ private:
     rga_buffer_t dst;
     im_rect      src_rect;
     im_rect      dst_rect;
+    bool hasAllocated;
     void *rgb_buf=nullptr;
+    int rfd;
+    IM_STATUS STATUS;
 };
 
 void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int height_stride,

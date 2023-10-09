@@ -194,6 +194,11 @@ void IMG_HDR::hdr1Img()
 
 }
 
+void IMG_HDR::startProcessOnce()
+{
+    hdr2Imgs();
+}
+
 
 Mat IMG_HDR::hdr2GrayImgs(Mat img_src_bright, Mat img_src_dark)
 {
@@ -208,6 +213,11 @@ Mat IMG_HDR::hdr2GrayImgs(Mat img_src_bright, Mat img_src_dark)
     {
         cvtColor(img_src_bright,Max_X,COLOR_BGR2GRAY);
         cvtColor(img_src_dark,Max_Y,COLOR_BGR2GRAY);
+    }
+    else
+    {
+        img_src_bright.copyTo(Max_X);
+        img_src_dark.copyTo(Max_Y);
     }
     Max_X.convertTo(Max_X,CV_32F);
     Max_Y.convertTo(Max_Y,CV_32F);

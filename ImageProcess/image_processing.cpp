@@ -39,7 +39,10 @@ void Image_Processing_Class::generalProcess()
     usrtimer.start();
     if (img_input1.empty() || !ipcMutex.tryLock())
         return;
-    img_output2 = img_input1.clone();
+    if(img_input1.channels()==3)
+        cvtColor(img_input1,img_output2,COLOR_RGB2GRAY);
+    else
+        img_output2 = img_input1.clone();
     ipcMutex.unlock();
 
     vector<Point> cont;
@@ -165,42 +168,7 @@ void Image_Processing_Class::startMulCamProcess(QImage recvImg, int i)
         if(!inputFlags[j])
             return;
     }
-//    testMulCamAIProcess();
-//    testMulStereoMatcher();
-}
 
-
-void Image_Processing_Class::testMulStereoMatcher()
-{
-////    printf(" testMulStereoMatcher start");
-//    if(!ipcMutex.tryLock())
-//    {
-//        printf("no lock!");
-//        return;
-//    }
-//    if(img_inputs[2].empty() | img_inputs[3].empty())
-//    {
-//        printf("image inputs are empty.");
-//        return;
-//    }
-//    vector<Point> points;
-//    points.push_back(Point(276, 288));
-//    points.push_back(Point(278, 288));
-//    vector<Point3f> pts3;
-//    stereoMatcher.calcXYZ(img_inputs[2], img_inputs[3], points, pts3);
-//    pt1 = pts3[0];
-//    pt2 = pts3[1];
-//    printf("%f, %f, %f\n", pt1.x, pt1.y, pt1.z);
-//    for(int k = 0; k<4; k++)
-//    {
-////        resize(img_inputs[k], img_inputs[k], Size(this_aue->SrcImage.width, this_aue->SrcImage.height));
-//        img_outputs[k] = img_inputs[k].clone();
-//    }
-//    for(int k = 0; k<4; k++)
-//        inputFlags[k] = false;
-
-//    ipcMutex.unlock();
-//    emit outputMulImgAIRequest();
 }
 
 void Image_Processing_Class::changeProcPara(QString qstr, int wc)
@@ -234,4 +202,34 @@ bool Image_Processing_Class::processFilePic()
     {
         return false;
     }
+}
+
+void ImageWriter::run()
+{
+    usrtimer.start();
+
+    //按需保存图片：
+    QDateTime current_date_time =QDateTime::currentDateTime();
+    QString current_date =current_date_time.toString("yyyy_MM_dd");
+    QString current_time =current_date_time.toString("hh_mm_ss_zzz");
+    QString dir_str = "./SaveFile/"+current_date+"/";
+    QDir dir;
+    if (!dir.exists(dir_str))
+        dir.mkpath(dir_str);
+    QString fn;
+    switch (method) {
+    case 1:
+        fn=dir_str+current_time+"_mannulsaved.bmp";
+        break;
+    case 2:
+        fn=dir_str+current_time+"_mannulsaved.jpg";
+        break;
+    default:
+        fn=dir_str+current_time+"_mannulsaved.png";
+        break;
+    }
+
+    qimg.save(fn);
+    cout<<"Save time(width:"<<qimg.width()<<",height:"<<qimg.height()<<
+          "): "<<usrtimer.elapsed()<<" ms."<<endl;
 }

@@ -44,11 +44,8 @@ public:
     static int saveFloat(const char* file_name, float* output, int element_size);
 
     double __get_us(struct timeval t);
-    bool InitRKNN();
 
 public slots:
-    int RunOnce();
-
     void iniImgProcessor() override;
     void startProcessOnce() override;
 

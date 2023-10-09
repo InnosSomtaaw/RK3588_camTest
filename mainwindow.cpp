@@ -100,10 +100,14 @@ void MainWindow::initImageBoxes()
     ui->imagebox3->setScene(&scene3);
     scene3.addItem(&pixmapShow3);
 
-    connect(this->ui->imagebox1,&PictureView::outputImgProperty_request,
-            this,&MainWindow::on_imagebox1_OpenImage);
-    connect(this->ui->imagebox2,&PictureView::outputImgProperty_request,
-            this,&MainWindow::on_imagebox2_OpenImage);
+    connect(this->ui->imagebox1,&PictureView::loadImgRequest,
+            this,&MainWindow::on_imageboxOpenImage);
+    connect(this->ui->imagebox2,&PictureView::loadImgRequest,
+            this,&MainWindow::on_imageboxOpenImage);
+    connect(this->ui->imagebox1,&PictureView::saveImgRequest,
+            this,&MainWindow::on_imageboxSaveImage);
+    connect(this->ui->imagebox2,&PictureView::saveImgRequest,
+            this,&MainWindow::on_imageboxSaveImage);
 }
 
 void MainWindow::initImageProcess()
@@ -116,12 +120,16 @@ void MainWindow::initImageProcess()
     switch (workCond) {
     case HDRfrom2Img:
     case HDRfrom2ImgGPU:
+        connect(imgProcHDR,&IMG_HDR::outputMulImgAIRequest,
+                this,&MainWindow::slotimageboxesRefresh);
+        imgProcessor1=imgProcHDR;
+        break;
     case HDRfrom1Img:
     {
         connect(this,&MainWindow::startCam1Request,
                 imgProcHDR,&IMG_HDR::startProcessOnce);
         connect(imgProcHDR,&IMG_HDR::outputImgProcessedRequest,
-                this,&MainWindow::on_imagebox1_refresh);
+                this,&MainWindow::slotimagebox1Refresh);
         imgProcessor1=imgProcHDR;
         break;
     }
@@ -130,7 +138,7 @@ void MainWindow::initImageProcess()
         connect(this,&MainWindow::startCam1Request,
                 imgProcRKNN,&RKNN_INFERENCER::startProcessOnce);
         connect(imgProcRKNN,&RKNN_INFERENCER::outputImgProcessedRequest,
-                this,&MainWindow::on_imagebox1_refresh);
+                this,&MainWindow::slotimagebox1Refresh);
         QByteArray qba = proj_path.toLocal8Bit();
         imgProcRKNN->model_name=qba.data();
         imgProcRKNN->iniImgProcessor();
@@ -147,7 +155,7 @@ void MainWindow::initImageProcess()
         connect(this,&MainWindow::startCam1Request,
                 imgProcessor1,&Image_Processing_Class::startProcessOnce);
         connect(imgProcessor1,&Image_Processing_Class::outputImgProcessedRequest,
-                this,&MainWindow::on_imagebox1_refresh);
+                this,&MainWindow::slotimagebox1Refresh);
         break;
     }
     }
@@ -162,7 +170,7 @@ void MainWindow::initImageProcess()
     connect(this,&MainWindow::startCam2Request,
             imgProcessor2,&Image_Processing_Class::startProcessOnce);
     connect(imgProcessor2,&Image_Processing_Class::outputImgProcessedRequest,
-            this,&MainWindow::on_imagebox2_refresh);
+            this,&MainWindow::slotimagebox2Refresh);
     imgProThread2 = new QThread();
     imgProcessor2->moveToThread(imgProThread2);
     imgProThread2->start();
@@ -170,6 +178,12 @@ void MainWindow::initImageProcess()
 
 void MainWindow::initVideoPlayers()
 {
+//    //数字相机类初始化（ffmpeg读取）
+//    cam1=new VideoPlayer;
+//    cam1->camURL=urls[1];
+//    connect(cam1,&VideoPlayer::sigGetOneFrame,
+//            this,&MainWindow::slotGetOneFrame1);
+
     //数字相机类初始化（mpp读取）
     cam1=new MPP_PLAYER;
     cam1->camURL = urls[1];
@@ -178,18 +192,36 @@ void MainWindow::initVideoPlayers()
 
     //数字相机类初始化（HIKVISION读取）
     cam2=new CMvCamera;
-    if(m_stDevList.nDeviceNum<2)
+    if(m_stDevList.nDeviceNum<1)
         return;
     cam2->m_stDevList=m_stDevList;
+    cam2->nIndex=0;
+    cam2->froceRaw=false;
     cam2->startCamera();
     connect(cam2,&CMvCamera::sigGetOneFrame,
             this,&MainWindow::slotGetOneFrame2);
 
-////    //数字相机类初始化（ffmpeg读取）
-//    cam2=new VideoPlayer;
-//    cam2->camURL=urls[1];
-//    connect(cam2,&VideoPlayer::sigGetOneFrame,
-//            this,&MainWindow::slotGetOneFrame2);
+    //图像保存类初始化(mpp)
+    cmp1=new MPP_COMPRESSOR;
+    connect(this,&MainWindow::saveCam1Request,
+            cmp1,&MPP_COMPRESSOR::getOneFrame);
+//    imgSavThread1=new QThread();
+//    cmp1->moveToThread(imgSavThread1);
+//    imgSavThread1->start();
+
+    cmp2=new MPP_COMPRESSOR;
+    MVCC_INTVALUE_EX stIntValue;
+    memset(&stIntValue, 0, sizeof(MVCC_INTVALUE_EX));
+    cam2->GetIntValue("Width",&stIntValue);
+    cmp2->width=stIntValue.nCurValue;
+    cam2->GetIntValue("Height",&stIntValue);
+    cmp2->height=stIntValue.nCurValue;
+    cmp2->startCamera();
+    connect(this,&MainWindow::saveCam2Request,
+            cmp2,&MPP_COMPRESSOR::getOneFrame);
+//    imgSavThread2=new QThread();
+//    cmp2->moveToThread(imgSavThread2);
+//    imgSavThread2->start();
 }
 
 void MainWindow::initBaseSettings()
@@ -197,14 +229,7 @@ void MainWindow::initBaseSettings()
     isDetecting=false;
     detecOnly1st=false;detecOnly2nd=false;
 
-//    for(FileNodeIterator it = fnode.begin(); it!=fnode.end(); it++)
-//    {
-//        Point2f p;
-//        *it>>p;
-////        cout<<p.x<<", "<<p.y<<endl;
-//        basePoints.push_back(p);
-//    }
-//    return;
+    mainTP.setMaxThreadCount(8);
 }
 
 void MainWindow::initTextBrowsers()
@@ -236,7 +261,7 @@ void MainWindow::on_buttonOpenAIProject_clicked()
 }
 
 
-void MainWindow::on_imageboxes_refresh()
+void MainWindow::slotimageboxesRefresh()
 {
 //    if(!imgProcessor1->ipcMutex.tryLock())
 //        return;
@@ -293,8 +318,15 @@ void MainWindow::on_imageboxes_refresh()
     case HDRfrom2ImgGPU:
     case HDRfrom2Img:
         //窗体2显示
-        disImage = QImage(img_input2.data,img_input2.cols,img_input2.rows,
-                          img_input2.cols*img_input2.channels(),QImage::Format_RGB888);
+        if(img_input2.channels()==1)
+            disImage = QImage(img_input2.data,img_input2.cols,img_input2.rows,
+                              img_input2.cols*img_input2.channels(),QImage::Format_Grayscale8);
+        else
+        {
+    //        cvtColor(img_input1, img_input1, COLOR_BGR2RGB);//图像格式转换
+            disImage = QImage(img_input2.data,img_input2.cols,img_input2.rows,
+                              img_input2.cols*img_input2.channels(),QImage::Format_BGR888);
+        }
         pixmapShow2.setPixmap(QPixmap::fromImage(disImage));
         //窗体3显示
         if(imgProcessor1->img_output3.channels()==1)
@@ -318,77 +350,66 @@ void MainWindow::on_imageboxes_refresh()
 
 //    imgProcessor1->ipcMutex.unlock();
 
-
     //界面状态显示
-////    ui->buttonProcessOnce->setEnabled(true);
-//    ui->textSavingCount->setStyleSheet("background-color: rgb(255,255,255)");
-
-//    if (imgProcess_main->isSavingImage)
-//        ui->textSavingCount->setStyleSheet("background-color: rgb(176,196,222)");
-//    else
-//        ui->textSavingCount->setStyleSheet("background-color: rgb(255,255,255)");
-//    /*QString str;
-//    str.sprintf("x: %f, y: %f, z: %f", imgProcess_main->pt1.x/1000, imgProcess_main->pt1.y/1000, imgProcess_main->pt1.z/1000);*/
-
-//    QString str;
-//    QString tempStr;
-//    for(int i = 0; i<2; i++)
-//    {
-//        tempStr.sprintf("The %dth camera:\n", i+1);
-//        str += tempStr;
-//        for(int k = 0; k<imgProcess_main->ptsVec[i].size(); k++)
-//        {
-//            tempStr.sprintf("x: %4d, y: %4d\n", imgProcess_main->ptsVec[i][k].x, imgProcess_main->ptsVec[i][k].y);
-//            str += tempStr;
-//        }
-//    }
-//    ui->textBrowser1->setText(str);
-//    str.clear();
 }
 
-void MainWindow::on_imagebox1_OpenImage()
+void MainWindow::on_imageboxOpenImage()
 {
-    QString fileName = ui->imagebox1->img_Name_input;
+    QString fileName = QFileDialog::getOpenFileName(
+                this,tr("Open Image"),".",tr("Image File(*.png *.jpg *.jpeg *.bmp)"));
+
     if (fileName.isEmpty())
         return;
 
-//    Mat srcImage = imread(fileName.toLatin1().data());//读取图片数据
-    Mat srcImage = imread(fileName.toLocal8Bit().toStdString());//读取图片数据
+    QImageReader qir(fileName);
+    QImage img=qir.read();
 
-    img_input1 = srcImage.clone();
-    imgProcessor1->img_input1=img_input1;
+    Mat srcImage;
+    if(img.format()==QImage::Format_RGB888)
+        srcImage=Mat(img.height(), img.width(), CV_8UC3,
+                       img.bits(), img.bytesPerLine());
+    else if(img.format()==QImage::Format_RGB32 ||
+            img.format()==QImage::Format_RGBA8888)
+        srcImage=Mat(img.height(), img.width(), CV_8UC4,
+                       img.bits(), img.bytesPerLine());
+    else
+        srcImage=Mat(img.height(), img.width(), CV_8UC1,
+                       img.bits(), img.bytesPerLine());
 
-    cvtColor(srcImage, srcImage, COLOR_BGR2RGB);//图像格式转换
-    QImage disImage = QImage(srcImage.data,srcImage.cols,srcImage.rows,
-                             QImage::Format_RGB888);
+    QObject *ptrSender=sender();
+    if(ptrSender==ui->imagebox1)
+    {
+        img_input1 = srcImage.clone();
+        imgProcessor1->img_input1=img_input1;
+        //窗体1显示
+        pixmapShow1.setPixmap(QPixmap::fromImage(img));
+        ui->imagebox1->Adapte();
+    }
+    else if(ptrSender==ui->imagebox2)
+    {
+        img_input2 = srcImage.clone();
+        imgProcessor1->img_input2=img_input2;
+        //窗体2显示
+        pixmapShow2.setPixmap(QPixmap::fromImage(img));
+        ui->imagebox2->Adapte();
+    }
 
-    //窗体1显示
-    pixmapShow1.setPixmap(QPixmap::fromImage(disImage));
-
-    ui->imagebox1->Adapte();
     srcImage.release();
 }
 
-void MainWindow::on_imagebox2_OpenImage()
+void MainWindow::on_imageboxSaveImage()
 {
-    QString fileName = ui->imagebox2->img_Name_input;
-    if (fileName.isEmpty())
-        return;
+    ImageWriter *iw=new ImageWriter;
+    //保存方式：0-png;1-bmp;2-jpg;
+    iw->method=2;
 
-//    Mat srcImage = imread(fileName.toLatin1().data());//读取图片数据
-    Mat srcImage = imread(fileName.toLocal8Bit().toStdString());//读取图片数据
+    QObject *ptrSender=sender();
+    if(ptrSender==ui->imagebox1)
+        iw->qimg=pixmapShow1.pixmap().toImage();
+    else if(ptrSender==ui->imagebox2)
+        iw->qimg=pixmapShow2.pixmap().toImage();
 
-    img_input2 = srcImage.clone();
-    imgProcessor1->img_input2=img_input2;
-
-    cvtColor(srcImage, srcImage, COLOR_BGR2RGB);//图像格式转换
-    QImage disImage = QImage(srcImage.data,srcImage.cols,srcImage.rows,
-                             QImage::Format_RGB888);
-
-    //窗体2显示
-    pixmapShow2.setPixmap(QPixmap::fromImage(disImage));
-    ui->imagebox2->Adapte();
-    srcImage.release();
+    mainTP.start(iw);
 }
 
 void MainWindow::on_buttonProcess_clicked()
@@ -447,20 +468,6 @@ void MainWindow::on_buttonReset_clicked()
     ui->buttonOpenAIProject->setEnabled(true);
 }
 
-void MainWindow::on_textSavingCount_textChanged()
-{
-    QString qstr = ui->textSavingCount->toPlainText();
-    switch (workCond) {
-    case HDRfrom1Img:
-    case HDRfrom1ImgGPU:
-        emit changeProcParasRequest(qstr,workCond);
-        break;
-    default:
-        imgProcessor1->max_save_count = qstr.toInt();
-        break;
-    }
-}
-
 void MainWindow::on_buttonStartCapture_clicked()
 {  
     if(ui->buttonStartCapture->text()=="StartCapture")
@@ -475,9 +482,6 @@ void MainWindow::on_buttonStartCapture_clicked()
             cam1->camMutex.unlock();
 
         cam2->StartGrabbing();
-//            cam2->camMutex.unlock();
-
-        ui->editCheckBox->setEnabled(false);
     }
     else if(ui->buttonStartCapture->text()=="StopCapture")
     {
@@ -488,107 +492,11 @@ void MainWindow::on_buttonStartCapture_clicked()
 
         cam1->camMutex.tryLock();
         cam2->StopGrabbing();
-//        cam2->camMutex.tryLock();
-
-//        if((!imgProcess_main->img_inputs[0].empty())&(!imgProcess_main->img_inputs[2].empty()))
-//        {
-//            ui->editCheckBox->setEnabled(true);
-//        }
     }
 }
 
-void MainWindow::on_submitBtn_clicked()
-{
-//    cv::destroyAllWindows();
-//    int index = workCond*2;
-//    basePoints[index].x = ui->lineEditX1->text().toInt();
-//    basePoints[index].y = ui->lineEditY1->text().toInt();
-//    index++;
-//    basePoints[index].x = ui->lineEditX2->text().toInt();
-//    basePoints[index].y = ui->lineEditY2->text().toInt();
 
-//    FileStorage fs(_BASE_SETTING_FILES, FileStorage::WRITE);
-//    if(!fs.isOpened())
-//        return;
-//    fs<<"workCondition"<< (int)workCond;
-
-//    fs<<"baseSettings"<<"[";
-//    for(int i = 0; i<basePoints.size(); i++)
-//    {
-//        fs<<basePoints[i];
-//    }
-//    fs<<"]";
-//    ui->editCheckBox->setCheckState(Qt::Unchecked);
-
-}
-
-void MainWindow::onMouseFront(int event, int x, int y, int flags)
-{
-    if(event == EVENT_LBUTTONDOWN)
-    {
-        QString xstr, ystr;
-        xstr.sprintf("%d", x);
-        ystr.sprintf("%d", y);
-        ui->lineEditX1->setText(xstr);
-        ui->lineEditY1->setText(ystr);
-        Mat temp = imgProcessor1->img_inputs[0].clone();
-        drawMarker(temp, Point(x,y), Scalar(0,0,255));
-    }
-}
-
-void MainWindow::onMouseBack(int event, int x, int y, int flags)
-{
-    if(event == EVENT_LBUTTONDOWN)
-    {
-        QString xstr, ystr;
-        xstr.sprintf("%d", x);
-        ystr.sprintf("%d", y);
-        ui->lineEditX2->setText(xstr);
-        ui->lineEditY2->setText(ystr);
-        Mat temp = imgProcessor1->img_inputs[2].clone();
-        drawMarker(temp, Point(x,y), Scalar(0,0,255));
-        imshow("backLeftImg", temp);
-    }
-}
-
-void on_mouse_front(int event, int x, int y, int flags, void* params)
-{
-    MainWindow* win = static_cast<MainWindow*>(params);
-    win->onMouseFront(event, x, y, flags);
-
-}
-
-void on_mouse_back(int event, int x, int y, int flags, void* params)
-{
-    MainWindow* win = static_cast<MainWindow*>(params);
-    win->onMouseBack(event, x, y, flags);
-}
-
-void MainWindow::on_editCheckBox_stateChanged(int state)
-{
-    if(state == Qt::Unchecked)
-    {
-        ui->lineEditX1->setEnabled(false);
-        ui->lineEditX2->setEnabled(false);
-        ui->lineEditY1->setEnabled(false);
-        ui->lineEditY2->setEnabled(false);
-        ui->submitBtn->setEnabled(false);
-    }
-    else if(state == Qt::Checked)
-    {
-        ui->buttonReset->click();
-        ui->lineEditX1->setEnabled(true);
-        ui->lineEditX2->setEnabled(true);
-        ui->lineEditY1->setEnabled(true);
-        ui->lineEditY2->setEnabled(true);
-        ui->submitBtn->setEnabled(true);
-
-        setMouseCallback("frontLeftImg", on_mouse_front, this);
-        setMouseCallback("backLeftImg", on_mouse_back, this);
-    }
-}
-
-void MainWindow::on_imagebox1_refresh()
+void MainWindow::slotimagebox1Refresh()
 {
     imgProcessor1->img_output1.copyTo(img_output1);
     QImage disImage;
@@ -616,7 +524,7 @@ void MainWindow::on_imagebox1_refresh()
     tempStr.clear();
 }
 
-void MainWindow::on_imagebox2_refresh()
+void MainWindow::slotimagebox2Refresh()
 {
 //    if(!imgProcessor2->ipcMutex.tryLock())
 //        return;
@@ -671,13 +579,44 @@ void MainWindow::slotGetOneFrame1(QImage img)
 
     if(cam1->isCapturing && isDetecting)
     {
-        img_input1=Mat(img.height(), img.width(), CV_8UC3,
-                        img.bits(), img.bytesPerLine());
+        if(img.format()==QImage::Format_RGB888)
+            img_input1=Mat(img.height(), img.width(), CV_8UC3,
+                           img.bits(), img.bytesPerLine());
+        else if(img.format()==QImage::Format_RGB32 ||
+                img.format()==QImage::Format_RGBA8888)
+            img_input1=Mat(img.height(), img.width(), CV_8UC4,
+                           img.bits(), img.bytesPerLine());
+        else
+            img_input1=Mat(img.height(), img.width(), CV_8UC1,
+                           img.bits(), img.bytesPerLine());
         if(imgProcessor1->ipcMutex.tryLock())
         {
             img_input1.copyTo(imgProcessor1->img_input1);
             imgProcessor1->ipcMutex.unlock();
             emit startCam1Request();
+        }
+    }
+
+    if(ui->checkBoxSaving->isChecked())
+    {
+        if(!cmp1->hasStarted)
+        {
+            cmp1->width=img.width();
+            cmp1->height=img.height();
+            cmp1->startCamera();
+        }
+        else
+        {
+            cmp1->img=img;
+            cmp1->getOneFrame();
+//            if(cmp1->camMutex.tryLock())
+//            {
+//                cmp1->img=img;
+//                cmp1->camMutex.unlock();
+//                emit saveCam1Request();
+//            }
+//            else
+//                cout<<"Cam1 Save skipped!"<<endl;
         }
     }
 }
@@ -704,8 +643,16 @@ void MainWindow::slotGetOneFrame2(QImage img)
 
     if(cam2->isCapturing && isDetecting)
     {
-        img_input2=Mat(img.height(), img.width(), CV_8UC1,
-                        img.bits(), img.bytesPerLine());
+        if(img.format()==QImage::Format_RGB888)
+            img_input2=Mat(img.height(), img.width(), CV_8UC3,
+                           img.bits(), img.bytesPerLine());
+        else if(img.format()==QImage::Format_RGB32 ||
+                img.format()==QImage::Format_RGBA8888)
+            img_input2=Mat(img.height(), img.width(), CV_8UC4,
+                           img.bits(), img.bytesPerLine());
+        else
+            img_input2=Mat(img.height(), img.width(), CV_8UC1,
+                           img.bits(), img.bytesPerLine());
         if(imgProcessor2->ipcMutex.tryLock())
         {
             img_input2.copyTo(imgProcessor2->img_input1);
@@ -713,20 +660,20 @@ void MainWindow::slotGetOneFrame2(QImage img)
             emit startCam2Request();
         }
     }
-}
 
-void MainWindow::setBases(int index)
-{
-    QString xstr, ystr;
-    xstr.sprintf("%d", basePoints[index].x);
-    ystr.sprintf("%d", basePoints[index].y);
-    ui->lineEditX1->setText(xstr);
-    ui->lineEditY1->setText(ystr);
-    index++;
-    xstr.sprintf("%d",basePoints[index].x);
-    ystr.sprintf("%d", basePoints[index].y);
-    ui->lineEditX2->setText(xstr);
-    ui->lineEditY2->setText(ystr);
+    if(ui->checkBoxSaving->isChecked())
+    {
+        cmp2->img=img;
+        cmp2->getOneFrame();
+//        if(cmp2->camMutex.tryLock())
+//        {
+//            cmp2->img=img;
+//            cmp2->camMutex.unlock();
+//            emit saveCam2Request();
+//        }
+//        else
+//            cout<<"Cam2 Save skipped!"<<endl;
+    }
 }
 
 void MainWindow::on_buttonOpenImgList_clicked()
@@ -758,12 +705,16 @@ void MainWindow::on_condComboBox_activated(int index)
     switch (workCond) {
     case HDRfrom2Img:
     case HDRfrom2ImgGPU:
+        connect(imgProcHDR,&IMG_HDR::outputMulImgAIRequest,
+                this,&MainWindow::slotimageboxesRefresh);
+        imgProcessor1=imgProcHDR;
+        break;
     case HDRfrom1Img:
     {
         connect(this,&MainWindow::startCam1Request,
                 imgProcHDR,&IMG_HDR::startProcessOnce);
         connect(imgProcHDR,&IMG_HDR::outputImgProcessedRequest,
-                this,&MainWindow::on_imagebox1_refresh);
+                this,&MainWindow::slotimagebox1Refresh);
         imgProcessor1=imgProcHDR;
         break;
     }
@@ -782,7 +733,7 @@ void MainWindow::on_condComboBox_activated(int index)
         connect(this,&MainWindow::startCam1Request,
                 imgProcRKNN,&RKNN_INFERENCER::startProcessOnce);
         connect(imgProcRKNN,&RKNN_INFERENCER::outputImgProcessedRequest,
-                this,&MainWindow::on_imagebox1_refresh);
+                this,&MainWindow::slotimagebox1Refresh);
         imgProcessor1=imgProcRKNN;
         break;
     }
@@ -795,7 +746,7 @@ void MainWindow::on_condComboBox_activated(int index)
         connect(this,&MainWindow::startCam1Request,
                 imgProcessor1,&Image_Processing_Class::startProcessOnce);
         connect(imgProcessor1,&Image_Processing_Class::outputImgProcessedRequest,
-                this,&MainWindow::on_imagebox1_refresh);
+                this,&MainWindow::slotimagebox1Refresh);
         break;
     }
     }

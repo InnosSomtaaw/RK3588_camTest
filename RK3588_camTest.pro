@@ -17,6 +17,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     Camera/general_camera.cpp \
+    Camera/mpp_compressor.cpp \
     Camera/videoplayer.cpp \
     Camera/mpp_player.cpp \
     Camera/MvCamera.cpp \
@@ -33,6 +34,7 @@ SOURCES += \
 
 HEADERS += \
     Camera/general_camera.h \
+    Camera/mpp_compressor.h \
     Camera/videoplayer.h \
     Camera/mpp_player.h \
     Camera/MvCamera.h \

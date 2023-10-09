@@ -7,7 +7,9 @@
 #include <QFileDialog>
 #include <QImage>
 #include <qdatetime.h>
+#include <QRunnable>
 #include <QThread>
+#include <QThreadPool>
 #include <QElapsedTimer>
 
 #include <opencv2/opencv.hpp>
@@ -29,6 +31,18 @@ enum WorkConditionsEnum
     InferenceRKNN,
 };
 void QImage2Mat(QImage img, Mat& imgMat);
+
+class ImageWriter : public QRunnable
+{
+public:
+    //计时器
+    QElapsedTimer usrtimer;
+    QImage qimg;
+    //保存方式：0-png;1-bmp;2-jpg;
+    int method=0;
+    void run();
+};
+
 
 //图像处理类
 class Image_Processing_Class : public QObject
@@ -58,7 +72,6 @@ public slots:
     void start1CamProcess(QImage receivedImg);
     //开始多相机连续处理槽
     void startMulCamProcess(QImage recvImg, int i);
-    void testMulStereoMatcher();
     //修改参数槽
     void changeProcPara(QString qstr,int wc);
 
