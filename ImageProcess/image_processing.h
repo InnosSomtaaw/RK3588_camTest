@@ -40,7 +40,7 @@ public:
     QImage qimg;
     //保存方式：0-png;1-bmp;2-jpg;
     int method=0;
-    void run();
+    void run() override;
 };
 
 

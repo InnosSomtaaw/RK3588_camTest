@@ -203,11 +203,12 @@ void MainWindow::initVideoPlayers()
 
     //图像保存类初始化(mpp)
     cmp1=new MPP_COMPRESSOR;
+    imgSavThread1 = new QThread();
+    cmp1->moveToThread(imgSavThread1);
+    imgSavThread1->start();
     connect(this,&MainWindow::saveCam1Request,
             cmp1,&MPP_COMPRESSOR::getOneFrame);
-//    imgSavThread1=new QThread();
-//    cmp1->moveToThread(imgSavThread1);
-//    imgSavThread1->start();
+    cmp1->camURL="cam1";
 
     cmp2=new MPP_COMPRESSOR;
     MVCC_INTVALUE_EX stIntValue;
@@ -216,12 +217,13 @@ void MainWindow::initVideoPlayers()
     cmp2->width=stIntValue.nCurValue;
     cam2->GetIntValue("Height",&stIntValue);
     cmp2->height=stIntValue.nCurValue;
+    cmp2->camURL="cam2";
     cmp2->startCamera();
+    imgSavThread2 = new QThread();
+    cmp2->moveToThread(imgSavThread2);
+    imgSavThread2->start();
     connect(this,&MainWindow::saveCam2Request,
             cmp2,&MPP_COMPRESSOR::getOneFrame);
-//    imgSavThread2=new QThread();
-//    cmp2->moveToThread(imgSavThread2);
-//    imgSavThread2->start();
 }
 
 void MainWindow::initBaseSettings()
@@ -229,7 +231,7 @@ void MainWindow::initBaseSettings()
     isDetecting=false;
     detecOnly1st=false;detecOnly2nd=false;
 
-    mainTP.setMaxThreadCount(8);
+    QThreadPool::globalInstance()->setMaxThreadCount(6);
 }
 
 void MainWindow::initTextBrowsers()
@@ -409,7 +411,7 @@ void MainWindow::on_imageboxSaveImage()
     else if(ptrSender==ui->imagebox2)
         iw->qimg=pixmapShow2.pixmap().toImage();
 
-    mainTP.start(iw);
+    QThreadPool::globalInstance()->start(iw);
 }
 
 void MainWindow::on_buttonProcess_clicked()
@@ -607,16 +609,14 @@ void MainWindow::slotGetOneFrame1(QImage img)
         }
         else
         {
-            cmp1->img=img;
-            cmp1->getOneFrame();
-//            if(cmp1->camMutex.tryLock())
-//            {
-//                cmp1->img=img;
-//                cmp1->camMutex.unlock();
-//                emit saveCam1Request();
-//            }
-//            else
-//                cout<<"Cam1 Save skipped!"<<endl;
+            if(cmp1->camMutex.tryLock())
+            {
+                cmp1->img=img.copy();
+                cmp1->camMutex.unlock();
+                emit saveCam1Request();
+            }
+            else
+                cout<<"Cam1 Save skipped!"<<endl;
         }
     }
 }
@@ -663,16 +663,14 @@ void MainWindow::slotGetOneFrame2(QImage img)
 
     if(ui->checkBoxSaving->isChecked())
     {
-        cmp2->img=img;
-        cmp2->getOneFrame();
-//        if(cmp2->camMutex.tryLock())
-//        {
-//            cmp2->img=img;
-//            cmp2->camMutex.unlock();
-//            emit saveCam2Request();
-//        }
-//        else
-//            cout<<"Cam2 Save skipped!"<<endl;
+        if(cmp2->camMutex.tryLock())
+        {
+            cmp2->img=img.copy();
+            cmp2->camMutex.unlock();
+            emit saveCam2Request();
+        }
+        else
+            cout<<"Cam2 Save skipped!"<<endl;
     }
 }
 

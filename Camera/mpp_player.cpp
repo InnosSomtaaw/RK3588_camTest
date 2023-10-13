@@ -73,12 +73,14 @@ void MPP_PLAYER::run()
     QImage image = QImage((uchar*)rgb_buf,width,height,width*3,QImage::Format_RGB888);
 
     emit sigGetOneFrame(image);  //发送信号
+//    cout<<"Current mpp thread: "<<QThread::currentThreadId()<<endl;
 }
 
 void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int height_stride,
                                          int width, int height, int format, int fd, void *data)
 {
     MPP_PLAYER *ctx=(MPP_PLAYER*)user_data;
+    ctx->setAutoDelete(false);
     ctx->width_stride=width_stride;
     ctx->height_stride=height_stride;
     ctx->width=width;
@@ -86,8 +88,8 @@ void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int 
     ctx->format=format;
     ctx->fd=fd;
     ctx->data=data;
-//    ctx->getOneFrame();
-    ctx->start();
+//    ctx->start();
+    QThreadPool::globalInstance()->start(ctx);
 }
 
 void API_CALL on_track_frame_out(void *user_data, mk_frame frame)
