@@ -27,8 +27,6 @@ public:
      bool froceRaw;
 
      void startCamera() override;
-     void getOneFrame() override;
-
      void run() override;
 
     // ch:获取SDK版本号 | en:Get SDK Version

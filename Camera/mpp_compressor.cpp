@@ -25,16 +25,18 @@ void MPP_COMPRESSOR::startCamera()
     enc_params.width = width;
     enc_params.height = height;
     enc_params.fmt = MPP_FMT_YUV420SP;
-    enc_params.type = MPP_VIDEO_CodingMJPEG;
-    enc_params.fps_out_num=1;
-    enc_params.fps_out_den=5000;
+    enc_params.type = MPP_VIDEO_CodingHEVC;
+    enc_params.fps_out_num=30;
+//    enc_params.type = MPP_VIDEO_CodingMJPEG;
+//    enc_params.fps_out_num=1;
+//    enc_params.fps_out_den=5000;
 
     //Align to 16
     width_stride=(width+16-1)&~(16-1);
     height_stride=(height+16-1)&~(16-1);
 
     encoder->Init(enc_params,(void *)this);
-    encoder->SetCallback(mpp_encoder_frame_callback);
+//    encoder->SetCallback(mpp_encoder_frame_callback);
 
     mpp_frame = NULL;
     mpp_frame_fd = 0;
@@ -50,13 +52,24 @@ void MPP_COMPRESSOR::startCamera()
     memset(&src_rect, 0, sizeof(src_rect));
     memset(&dst_rect, 0, sizeof(dst_rect));
 
+    //按需保存图片：
+    current_date_time =QDateTime::currentDateTime();
+    current_date =current_date_time.toString("yyyy_MM_dd");
+    dir_str = "./SaveFile/"+current_date+"/";
+    if (!dir.exists(dir_str))
+        dir.mkpath(dir_str);
+    fn=dir_str+camURL+"_autosaved.h265";
+    qba = fn.toLocal8Bit();
+    fp = fopen(qba.data(), "w");
+    framNum=0;
+
     hasStarted=true;
 }
 
 void MPP_COMPRESSOR::getOneFrame()
 {
-//    if(!camMutex.tryLock())
-//        return;
+    if(!camMutex.tryLock())
+        return;
     usrtimer1.start();
 
     dst = wrapbuffer_virtualaddr(mpp_frame_addr, width, height, RK_FORMAT_YCbCr_420_SP,
@@ -68,8 +81,10 @@ void MPP_COMPRESSOR::getOneFrame()
     {
         src = wrapbuffer_virtualaddr((void*)img.bits(), width, height, RK_FORMAT_RGB_888,
                                      width_stride,height_stride);
+//        STATUS = imcvtcolor(src, dst,RK_FORMAT_RGB_888,RK_FORMAT_YCbCr_420_SP,
+//                            IM_RGB_TO_YUV_BT601_FULL,0,&rfd);
         STATUS = imcvtcolor(src, dst,RK_FORMAT_RGB_888,RK_FORMAT_YCbCr_420_SP,
-                            IM_RGB_TO_YUV_BT601_FULL,0,&rfd);
+                            IM_RGB_TO_YUV_BT601_FULL);
     }
         break;
     case QImage::Format_RGB32:
@@ -77,8 +92,10 @@ void MPP_COMPRESSOR::getOneFrame()
     {
         src = wrapbuffer_virtualaddr((void*)img.bits(), width, height, RK_FORMAT_BGRA_8888,
                                      width_stride,height_stride);
-        STATUS = imcvtcolor(src, dst,RK_FORMAT_BGRA_8888,RK_FORMAT_YCbCr_420_SP,
-                            IM_RGB_TO_YUV_BT601_FULL,0,&rfd);
+//        STATUS = imcvtcolor(src, dst,RK_FORMAT_BGRA_8888,RK_FORMAT_YCbCr_420_SP,
+//                            IM_RGB_TO_YUV_BT601_FULL,0,&rfd);
+        STATUS = imcvtcolor(src, dst,RK_FORMAT_RGB_888,RK_FORMAT_YCbCr_420_SP,
+                            IM_RGB_TO_YUV_BT601_FULL);
     }
     }
 
@@ -90,12 +107,22 @@ void MPP_COMPRESSOR::getOneFrame()
 //    }
 
     cout<<rfd<<" RGA cvtcolor time: "<<usrtimer1.elapsed()<<" ms."<<endl;
+//    cout<<"Current RGA cvtcolor thread: "<<QThread::currentThreadId()<<endl;
 
-    this->start();
-//    camMutex.unlock();
+//    this->start();
+    camMutex.unlock();
+//    this->setAutoDelete(false);
+//    QThreadPool::globalInstance()->start(this);
 
-//     Encode to file
-//    enc_data_size = encoder->Encode(mpp_frame, enc_data, enc_buf_size);
+    //Encode to file
+//    if(framNum==0)
+//    {
+    enc_data_size = encoder->GetHeader(enc_data, enc_buf_size);
+    fwrite(enc_data, 1, enc_data_size,fp);
+//    }
+    enc_data_size = encoder->Encode(mpp_frame, enc_data, enc_buf_size);
+    fwrite(enc_data, 1, enc_data_size,fp);
+//    framNum++;
 
 //    cout<<"Encode time: "<<usrtimer1.elapsed()<<" ms."<<endl;
 
@@ -106,44 +133,30 @@ void MPP_COMPRESSOR::getOneFrame()
 //    dir_str = "./SaveFile/"+current_date+"/";
 //    if (!dir.exists(dir_str))
 //        dir.mkpath(dir_str);
-//    fn=dir_str+current_time+"_autosaved.jpg";
+//    fn=dir_str+camURL+current_time+"_autosaved.h265";
 //    qba = fn.toLocal8Bit();
 //    fp = fopen(qba.data(), "w");
 //    fwrite(enc_data, 1, enc_data_size,fp);
 //    //    fflush(fp);
 //    fclose(fp);
 
-//    cout<<"Save time(width:"<<width<<",height:"<<
-//              height<<"): "<<usrtimer1.elapsed()<<" ms."<<endl;
+    cout<<"Save time(width:"<<width<<",height:"<<
+              height<<"): "<<usrtimer1.elapsed()<<" ms."<<endl;
 }
 
 void MPP_COMPRESSOR::run()
 {
     usrtimer2.start();
 
-    STATUS=imsync(rfd);
+//    do
+//        STATUS=imsync(rfd);
+//    while(STATUS!=IM_STATUS_SUCCESS);
 
     // Encode to file
     enc_data_size = encoder->Encode(mpp_frame, enc_data, enc_buf_size);
 
-    cout<<"Encode time: "<<usrtimer2.elapsed()<<" ms."<<endl;
-
-//    //按需保存图片：
-//    current_date_time =QDateTime::currentDateTime();
-//    current_date =current_date_time.toString("yyyy_MM_dd");
-//    current_time =current_date_time.toString("hh_mm_ss_zzz");
-//    dir_str = "./SaveFile/"+current_date+"/";
-//    if (!dir.exists(dir_str))
-//        dir.mkpath(dir_str);
-//    fn=dir_str+current_time+"_autosaved.jpg";
-//    qba = fn.toLocal8Bit();
-//    fp = fopen(qba.data(), "w");
-//    fwrite(enc_data, 1, enc_data_size,fp);
-////    fflush(fp);
-//    fclose(fp);
-
-//    cout<<"Save time(width:"<<width<<",height:"<<
-//              height<<"): "<<usrtimer2.elapsed()<<" ms."<<endl;
+    cout<<"Encode time: "<<usrtimer1.elapsed()<<" ms."<<endl;
+//    cout<<"Current encode thread: "<<QThread::currentThreadId()<<endl;
 }
 
 void mpp_encoder_frame_callback(void *userdata, const char *data, int size)

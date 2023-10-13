@@ -13,9 +13,6 @@
 #include <qdatetime.h>
 #include <QElapsedTimer>
 
-//#include <opencv2/opencv.hpp>
-//#include <opencv2/core/ocl.hpp>
-
 #include "im2d.h"
 #include "rga.h"
 #include "RgaUtils.h"
@@ -25,10 +22,6 @@
 #include "../RKNN/utils/mpp_encoder.h"
 #include "../RKNN/utils/drawing.h"
 #include "mk_mediakit.h"
-
-//QT_BEGIN_NAMESPACE
-//using namespace cv;
-//QT_END_NAMESPACE
 
 class MPP_COMPRESSOR : public General_Camera
 {
@@ -43,7 +36,7 @@ public:
     int width_stride, height_stride,width, height, format,fd;
     QImage img;
     const char* data;
-    int size;
+    int size,framNum;
 
     FILE* fp;
     QDateTime current_date_time;

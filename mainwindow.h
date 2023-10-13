@@ -56,10 +56,8 @@ private:
     IMG_HDR *imgProcHDR;
     //图像处理线程
     QThread *imgProThread1,*imgProThread2;
-//    //图像保存线程
-//    QThread *imgSavThread1,*imgSavThread2;
-
-    QThreadPool mainTP;
+    //图像保存线程
+    QThread *imgSavThread1,*imgSavThread2;
 
     QGraphicsScene scene1, scene2, scene3;
     QGraphicsPixmapItem pixmapShow1, pixmapShow2, pixmapShow3;

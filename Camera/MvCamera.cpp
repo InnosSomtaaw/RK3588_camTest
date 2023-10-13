@@ -65,40 +65,6 @@ void CMvCamera::startCamera()
     hasStarted=true;
 }
 
-void CMvCamera::getOneFrame()
-{  
-    QImage disImage;
-    unsigned char *pConvertData=NULL;
-    if(IsColor(pFrameInfo->enPixelType) && !froceRaw)
-    {
-        unsigned int nConvertDataSize=pFrameInfo->nWidth * pFrameInfo->nHeight*3;
-        pConvertData = (unsigned char*)malloc(nConvertDataSize);
-        // Convert pixel format
-        MV_CC_PIXEL_CONVERT_PARAM stConvertParam = {0};
-        stConvertParam.nWidth = pFrameInfo->nWidth;                 // image width
-        stConvertParam.nHeight = pFrameInfo->nHeight;               // image height
-        stConvertParam.pSrcData = pData;                         // input data buffer
-        stConvertParam.nSrcDataLen = pFrameInfo->nFrameLen;         // input data size
-        stConvertParam.enSrcPixelType = pFrameInfo->enPixelType;    // input pixel format
-        stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed;                         // output pixel format
-        stConvertParam.pDstBuffer = pConvertData;                               // output data buffer
-        stConvertParam.nDstBufferSize = nConvertDataSize;                       // output buffer size
-        ConvertPixelType(&stConvertParam);
-        disImage = QImage((uchar*)pConvertData,pFrameInfo->nWidth,pFrameInfo->nHeight,
-                             pFrameInfo->nWidth*3,QImage::Format_RGB888);
-    }
-    else
-        disImage = QImage((uchar*)pData,pFrameInfo->nWidth,pFrameInfo->nHeight,
-                          pFrameInfo->nWidth,QImage::Format_Grayscale8);
-    QImage image = disImage.copy(); //把图像复制一份 传递给界面显示
-    emit sigGetOneFrame(image);  //发送信号
-    if (pConvertData)
-    {
-        free(pConvertData);
-        pConvertData = NULL;
-    }
-}
-
 void CMvCamera::run()
 {
     QImage disImage;
@@ -127,6 +93,7 @@ void CMvCamera::run()
         disImage = QImage((uchar*)pData,pFrameInfo->nWidth,pFrameInfo->nHeight,
                           pFrameInfo->nWidth,QImage::Format_Grayscale8);
     emit sigGetOneFrame(disImage);  //发送信号
+//    cout<<"Current mvcamera thread: "<<QThread::currentThreadId()<<endl;
 }
 
 // ch:获取SDK版本号 | en:Get SDK Version
@@ -484,10 +451,11 @@ void __stdcall ImageCallBack(unsigned char *pData, MV_FRAME_OUT_INFO_EX *pFrameI
         return;
 //    cout<<"got one frame!"<<endl;
     CMvCamera *temp=(CMvCamera *)pUser;
+    temp->setAutoDelete(false);
     temp->pData=pData;
     temp->pFrameInfo=pFrameInfo;
-//    temp->getOneFrame();
-    temp->start();
+//    temp->start();
+    QThreadPool::globalInstance()->start(temp);
 }
 
 // ch:显示错误信息 | en:Show error message

@@ -94,6 +94,7 @@ void Image_Processing_Class::generalProcess()
 
     emit outputImgProcessedRequest();
     onceRunTime = usrtimer.elapsed();
+//    cout<<"Current image process thread: "<<QThread::currentThreadId()<<endl;
 //    cout<<"Test OCL time: "<<onceRunTime<<" ms with ocl "<<onGPU<<endl;
 }
 
