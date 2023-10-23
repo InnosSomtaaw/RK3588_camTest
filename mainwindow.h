@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QFileDialog>
 #include <QtWidgets>
+#include <QTcpServer>
+#include <QTcpSocket>
 
 #include "Camera/videoplayer.h"
 #include "Camera/mpp_compressor.h"
@@ -27,6 +29,7 @@ public:
 
     bool isDetecting,detecOnly1st,detecOnly2nd;
     QElapsedTimer time1,time2;
+    int serverPort;
 
 private:
     Ui::MainWindow *ui;
@@ -62,6 +65,11 @@ private:
     QGraphicsScene scene1, scene2, scene3;
     QGraphicsPixmapItem pixmapShow1, pixmapShow2, pixmapShow3;
     QString strOutput1,strOutput2;
+
+    //TCP通讯类
+    QTcpServer *tcpServer;
+    QTcpSocket *tcpSocket;
+
     //显示窗体初始化
     void initImageBoxes();
     //初始化程序工况
@@ -99,12 +107,18 @@ private slots:
     void slotimagebox1Refresh();
     //图片2刷新槽
     void slotimagebox2Refresh();
+    //图片3刷新槽
+    void slotimagebox3Refresh(QImage disImage);
     //多图片刷新槽
     void slotimageboxesRefresh();
     //视频流1获取槽
     void slotGetOneFrame1(QImage img);
     //视频流2获取槽
     void slotGetOneFrame2(QImage img);
+    //TCP接收处理
+    void slotTCPReceived();
+    //TCP发送按钮槽
+    void on_buttonSend_clicked();
 
 signals:
     //开始单次处理信号

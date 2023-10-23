@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.11.0, 2023-10-13T08:35:07. -->
+<!-- Written by QtCreator 4.11.0, 2023-10-20T18:22:16. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -220,9 +220,9 @@
       <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">RemoteLinux.DirectUploadStep</value>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedFiles">
-       <value type="QString">/mnt/d/WORKS/build-RK3588_camTest-qt_5_15_2_aarch64_rockchip930_linux-Debug/RK3588_camTest</value>
-       <value type="QString">/mnt/d/WORKS/build-RK3588_camTest-qt_5_15_2_aarch64_rockchip930_linux-Debug/RK3588_camTest</value>
        <value type="QString">/mnt/d/WORKS/build-RK3588_camTest-qt_5_15_2_aarch64_rockchip930_linux-Release/RK3588_camTest</value>
+       <value type="QString">/mnt/d/WORKS/build-RK3588_camTest-qt_5_15_2_aarch64_rockchip930_linux-Debug/RK3588_camTest</value>
+       <value type="QString">/mnt/d/WORKS/build-RK3588_camTest-qt_5_15_2_aarch64_rockchip930_linux-Debug/RK3588_camTest</value>
       </valuelist>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedHosts">
        <value type="QString">192.168.137.14</value>
@@ -231,8 +231,8 @@
       </valuelist>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedRemotePaths">
        <value type="QString">/home/toybrick/Works/CrossCompiled/RK3588_camTest</value>
-       <value type="QString">/home/toybrick/Works/RK3588_camTest</value>
        <value type="QString">/home/toybrick/Works/CrossCompiled/RK3588_camTest</value>
+       <value type="QString">/home/toybrick/Works/RK3588_camTest</value>
       </valuelist>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedSysroots">
        <value type="QString"></value>
@@ -242,14 +242,14 @@
       <value type="bool" key="RemoteLinux.GenericDirectUploadStep.IgnoreMissingFiles">false</value>
       <value type="bool" key="RemoteLinux.GenericDirectUploadStep.Incremental">false</value>
       <valuelist type="QVariantList" key="RemoteLinux.LastDeployedLocalTimes">
-       <value type="QDateTime">2023-10-12T15:37:10.321</value>
+       <value type="QDateTime">2023-10-17T08:13:00.459</value>
+       <value type="QDateTime">2023-10-20T18:20:27.737</value>
        <value type="QDateTime">2023-08-21T02:30:39.000</value>
-       <value type="QDateTime">2023-10-12T15:09:47.538</value>
       </valuelist>
       <valuelist type="QVariantList" key="RemoteLinux.LastDeployedRemoteTimes">
-       <value type="QDateTime">2023-10-12T16:05:18.000</value>
+       <value type="QDateTime">2023-10-17T08:13:01.000</value>
+       <value type="QDateTime">2023-10-20T18:20:48.000</value>
        <value type="QDateTime"></value>
-       <value type="QDateTime">2023-10-12T15:09:55.000</value>
       </valuelist>
      </valuemap>
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.1">
@@ -333,7 +333,7 @@
     </valuelist>
     <value type="int" key="PE.EnvironmentAspect.Base">1</value>
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes">
-     <value type="QString">DISPLAY=192.168.137.11:0</value>
+     <value type="QString">DISPLAY=192.168.137.1:0</value>
      <value type="QString">LD_LIBRARY_PATH=/opt/MVS/lib/aarch64:/home/toybrick/opencv-build/install/lib:/home/toybrick/ffmpegInstall/lib:/home/toybrick/librknn_api/lib</value>
     </valuelist>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">RK3588_camTest (on RK3588)</value>
@@ -353,7 +353,7 @@
     <value type="bool" key="RunConfiguration.UseX11Forwarding">false</value>
     <value type="QString" key="RunConfiguration.WorkingDirectory"></value>
     <value type="QString" key="RunConfiguration.WorkingDirectory.default"></value>
-    <value type="QString" key="RunConfiguration.X11Forwarding">unix:0</value>
+    <value type="QString" key="RunConfiguration.X11Forwarding">192.168.137.1:0</value>
    </valuemap>
    <value type="int" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
   </valuemap>
