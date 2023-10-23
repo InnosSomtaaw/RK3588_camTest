@@ -108,6 +108,10 @@ void MainWindow::initImageBoxes()
             this,&MainWindow::on_imageboxSaveImage);
     connect(this->ui->imagebox2,&PictureView::saveImgRequest,
             this,&MainWindow::on_imageboxSaveImage);
+    connect(this->ui->imagebox3,&PictureView::loadImgRequest,
+            this,&MainWindow::on_imageboxOpenImage);
+    connect(this->ui->imagebox3,&PictureView::saveImgRequest,
+            this,&MainWindow::on_imageboxSaveImage);
 }
 
 void MainWindow::initImageProcess()
@@ -208,6 +212,8 @@ void MainWindow::initVideoPlayers()
     imgSavThread1->start();
     connect(this,&MainWindow::saveCam1Request,
             cmp1,&MPP_COMPRESSOR::getOneFrame);
+    connect(cmp1,&MPP_COMPRESSOR::sigGetOneFrame,
+            this,&MainWindow::slotimagebox3Refresh);
     cmp1->camURL="cam1";
 
     cmp2=new MPP_COMPRESSOR;
@@ -230,8 +236,20 @@ void MainWindow::initBaseSettings()
 {
     isDetecting=false;
     detecOnly1st=false;detecOnly2nd=false;
-
     QThreadPool::globalInstance()->setMaxThreadCount(6);
+    ui->labelServerPort->setText("ServerPort: "+QString::number(serverPort)+" ");
+    tcpServer = new QTcpServer(this);
+    tcpServer->listen(QHostAddress::Any,serverPort);
+    connect(tcpServer,&QTcpServer::newConnection,
+            [=]()
+    {
+        tcpSocket = tcpServer->nextPendingConnection();
+        QString temp = tcpSocket->peerAddress().toString()+":"+QString::number(tcpSocket->peerPort())+" connected";
+        ui->textEditReceive->setText(temp);
+        connect(tcpSocket,&QTcpSocket::readyRead,
+                this,&MainWindow::slotTCPReceived);
+    }
+    );
 }
 
 void MainWindow::initTextBrowsers()
@@ -251,6 +269,8 @@ void MainWindow::initWorkCondition()
     workCond=WorkConditionsEnum(iniRW->value("WorkCondition/WorkCondition").toInt());
     proj_path=iniRW->value("InferenceRKNN/ModelPath").toString();
     ui->condComboBox->setCurrentIndex(workCond);
+
+    serverPort=iniRW->value("Communication/ServerPort").toInt();
 }
 
 void MainWindow::on_buttonOpenAIProject_clicked()
@@ -366,17 +386,8 @@ void MainWindow::on_imageboxOpenImage()
     QImageReader qir(fileName);
     QImage img=qir.read();
 
-    Mat srcImage;
-    if(img.format()==QImage::Format_RGB888)
-        srcImage=Mat(img.height(), img.width(), CV_8UC3,
-                       img.bits(), img.bytesPerLine());
-    else if(img.format()==QImage::Format_RGB32 ||
-            img.format()==QImage::Format_RGBA8888)
-        srcImage=Mat(img.height(), img.width(), CV_8UC4,
-                       img.bits(), img.bytesPerLine());
-    else
-        srcImage=Mat(img.height(), img.width(), CV_8UC1,
-                       img.bits(), img.bytesPerLine());
+    img=img.convertToFormat(QImage::Format_RGB888);
+    Mat srcImage(img.height(), img.width(), CV_8UC3,img.bits(), img.bytesPerLine());
 
     QObject *ptrSender=sender();
     if(ptrSender==ui->imagebox1)
@@ -394,6 +405,13 @@ void MainWindow::on_imageboxOpenImage()
         //窗体2显示
         pixmapShow2.setPixmap(QPixmap::fromImage(img));
         ui->imagebox2->Adapte();
+    }
+    else
+    {
+        img_output3 = srcImage.clone();
+        //窗体3显示
+        pixmapShow3.setPixmap(QPixmap::fromImage(img));
+        ui->imagebox3->Adapte();
     }
 
     srcImage.release();
@@ -421,7 +439,14 @@ void MainWindow::on_buttonProcess_clicked()
     {
         isDetecting=true;
         imgProcessor1->isDetecting=isDetecting;
-        imgProcessor1->startProcessOnce();
+
+        if(imgProcessor1->ipcMutex.tryLock())
+        {
+            img_input1.copyTo(imgProcessor1->img_input1);
+            imgProcessor1->ipcMutex.unlock();
+            emit startCam1Request();
+        }
+
         return;
     }
 
@@ -497,7 +522,6 @@ void MainWindow::on_buttonStartCapture_clicked()
     }
 }
 
-
 void MainWindow::slotimagebox1Refresh()
 {
     imgProcessor1->img_output1.copyTo(img_output1);
@@ -557,6 +581,12 @@ void MainWindow::slotimagebox2Refresh()
     strOutput2.clear();
     tempStr.clear();
 
+}
+
+void MainWindow::slotimagebox3Refresh(QImage disImage)
+{
+//    窗体3显示
+    pixmapShow3.setPixmap(QPixmap::fromImage(disImage));
 }
 
 void MainWindow::slotGetOneFrame1(QImage img)
@@ -674,6 +704,18 @@ void MainWindow::slotGetOneFrame2(QImage img)
     }
 }
 
+void MainWindow::slotTCPReceived()
+{
+    QByteArray array = tcpSocket->readAll();
+    ui->textEditReceive->append(array);
+    ui->textEditReceive->moveCursor(QTextCursor::End);
+
+    if(!tcpSocket->isValid())
+        return;
+    QString strReply="Got Messege!";
+    tcpSocket->write( strReply.toUtf8().data());
+}
+
 void MainWindow::on_buttonOpenImgList_clicked()
 {
     if(ui->buttonOpenImgList->text()=="OpenImgList")
@@ -753,4 +795,13 @@ void MainWindow::on_condComboBox_activated(int index)
     iniRW = new QSettings("LastSettings.ini",QSettings::IniFormat);
     iniRW->setValue("WorkCondition/WorkCondition",index);
     iniRW->setValue("InferenceRKNN/ModelPath",proj_path);
+}
+
+void MainWindow::on_buttonSend_clicked()
+{
+    if(!tcpSocket->isValid())
+        return;
+
+    QString str = ui->textEditSend->toPlainText();
+    tcpSocket->write( str.toUtf8().data());
 }

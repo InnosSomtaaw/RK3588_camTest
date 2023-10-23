@@ -68,10 +68,12 @@ void MPP_PLAYER::run()
     }
     rfd=-1;
     STATUS = imcvtcolor(src, dst,RK_FORMAT_YCbCr_420_SP,RK_FORMAT_RGB_888,
-                                  IM_YUV_TO_RGB_BT601_FULL,1,&rfd);
+                                  IM_YUV_TO_RGB_BT601_FULL,0,&rfd);
+    STATUS=imsync(rfd);
+    if(STATUS!=IM_STATUS_SUCCESS)
+        return;
 
     QImage image = QImage((uchar*)rgb_buf,width,height,width*3,QImage::Format_RGB888);
-
     emit sigGetOneFrame(image);  //发送信号
 //    cout<<"Current mpp thread: "<<QThread::currentThreadId()<<endl;
 }
@@ -88,7 +90,6 @@ void API_CALL mpp_decoder_frame_callback(void *user_data, int width_stride, int 
     ctx->format=format;
     ctx->fd=fd;
     ctx->data=data;
-//    ctx->start();
     QThreadPool::globalInstance()->start(ctx);
 }
 

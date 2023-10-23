@@ -37,6 +37,7 @@ public:
     QImage img;
     const char* data;
     int size,framNum;
+    QMutex encodeMutex;
 
     FILE* fp;
     QDateTime current_date_time;

@@ -195,21 +195,22 @@ void RKNN_INFERENCER::startProcessOnce()
 
     if (img_width != width || img_height != height)
     {
-//      resize(img_output1,img_output3,Size(height,width));
-//      inputs[0].buf = (void*)img_output3.data;
+      resize(img_output1,img_output3,Size(height,width));
+      inputs[0].buf = (void*)img_output3.data;
 
-      printf("resize with RGA!\n");
-      resize_buf = malloc(height * width * channel);
-      memset(resize_buf, 0x00, height * width * channel);
-      src = wrapbuffer_virtualaddr((void*)img_output1.data, img_width, img_height, RK_FORMAT_RGB_888);
-      dst = wrapbuffer_virtualaddr((void*)resize_buf, width, height, RK_FORMAT_RGB_888);
-      ret = imcheck(src, dst, src_rect, dst_rect);
-      if (IM_STATUS_NOERROR != ret) {
-        printf("%d, check error! %s", __LINE__, imStrError((IM_STATUS)ret));
-        return;
-      }
-      IM_STATUS STATUS = imresize(src, dst);
-      inputs[0].buf = resize_buf;
+//      printf("resize with RGA!\n");
+//      resize_buf = malloc(height * width * channel);
+//      memset(resize_buf, 0x00, height * width * channel);
+//      src = wrapbuffer_virtualaddr((void*)img_output1.data, img_width, img_height, RK_FORMAT_RGB_888);
+//      dst = wrapbuffer_virtualaddr((void*)resize_buf, width, height, RK_FORMAT_RGB_888);
+//      ret = imcheck(src, dst, src_rect, dst_rect);
+//      if (IM_STATUS_NOERROR != ret) {
+//        printf("%d, check error! %s", __LINE__, imStrError((IM_STATUS)ret));
+//        return;
+//      }
+//      IM_STATUS STATUS = imresize(src, dst);
+//      inputs[0].buf = resize_buf;
+
     }
     else
     {

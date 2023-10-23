@@ -15,7 +15,6 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/ocl.hpp>
 
-
 QT_BEGIN_NAMESPACE
 using namespace cv;
 using namespace std;

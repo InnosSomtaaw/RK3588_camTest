@@ -64,12 +64,8 @@ int MppEncoder::InitParams(MppEncoderParams& params)
     case MPP_FMT_RGB888 :
     case MPP_FMT_BGR888 :
     case MPP_FMT_RGB101010 :
-    case MPP_FMT_BGR101010 :
-    case MPP_FMT_ARGB8888 :
-    case MPP_FMT_ABGR8888 :
-    case MPP_FMT_BGRA8888 :
-    case MPP_FMT_RGBA8888 : {
-        this->frame_size = MPP_ALIGN(enc_params.hor_stride, 64) * MPP_ALIGN(enc_params.ver_stride, 64);
+    case MPP_FMT_BGR101010 : {
+        this->frame_size = MPP_ALIGN(enc_params.hor_stride, 64) * MPP_ALIGN(enc_params.ver_stride, 64) * 3;
     } break;
 
     default: {

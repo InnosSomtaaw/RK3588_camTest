@@ -110,14 +110,14 @@ void Image_Processing_Class::startProcessOnce()
 
 void Image_Processing_Class::startPicsProcess()
 {
-    emit mainwindowStatusRequest();
+//    emit mainwindowStatusRequest();
     do
     {
         bool flg = processFilePic();
         if(mainwindowIsStopProcess || !flg)
             break;
         QThread::sleep(10);
-        emit mainwindowStatusRequest();
+//        emit mainwindowStatusRequest();
     }while(mainwindowIsNext);
 }
 
