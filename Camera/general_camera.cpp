@@ -5,6 +5,7 @@ General_Camera::General_Camera()
     isCapturing=false;
     hasFinished=false;
     hasStarted=false;
+    cpuNo=0;
 }
 
 General_Camera::~General_Camera()

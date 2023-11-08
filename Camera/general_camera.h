@@ -1,6 +1,8 @@
 #ifndef GENERAL_CAMERA_H
 #define GENERAL_CAMERA_H
 
+#include <sched.h>
+
 #include <iostream>
 #include <QRunnable>
 #include <QThread>
@@ -24,6 +26,8 @@ public:
     int isCapturing,hasFinished,hasStarted;
     QString camURL;
     QMutex camMutex;
+    cpu_set_t myCPU;
+    int cpuNo;
 
     virtual void startCamera();
     virtual void getOneFrame();

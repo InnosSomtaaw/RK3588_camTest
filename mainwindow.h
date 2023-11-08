@@ -30,6 +30,7 @@ public:
     bool isDetecting,detecOnly1st,detecOnly2nd;
     QElapsedTimer time1,time2;
     int serverPort;
+    double fps1,fps2;
 
 private:
     Ui::MainWindow *ui;
@@ -46,10 +47,10 @@ private:
     QSettings *iniRW;
 //    //数字相机类（ffmpeg读取）
 //    VideoPlayer *cam1;
-    //数字相机类（mpp读取）
-    MPP_PLAYER *cam1;
+//    //数字相机类（mpp读取）
+//    MPP_PLAYER *cam1;
     //数字相机类（HIKVISION相机）
-    CMvCamera *cam2;
+    CMvCamera *cam2,*cam1;
     //图像保存类
     MPP_COMPRESSOR *cmp1,*cmp2;
     //图像处理类
@@ -129,5 +130,8 @@ signals:
     void saveCam2Request();
     //开始图片组处理信号
     void startPicsProcessRequest();
+    //开始图像处理线程初始化
+    void startProcessor1Ini();
+    void startProcessor2Ini();
 };
 #endif // MAINWINDOW_H

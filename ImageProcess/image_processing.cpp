@@ -10,6 +10,8 @@ Image_Processing_Class::Image_Processing_Class()
 
     mainwindowIsNext=false;mainwindowIsStopProcess=false;isSavingImage =false;
     onGPU=false;
+
+
 }
 
 Image_Processing_Class::~Image_Processing_Class()
@@ -19,7 +21,8 @@ Image_Processing_Class::~Image_Processing_Class()
 
 void Image_Processing_Class::iniImgProcessor()
 {
-
+//    qDebug()<<"imgProc Thread Id: "<<QThread::currentThreadId()<<Qt::endl;
+//    sched_setaffinity(0,sizeof(myCPU),&myCPU);
 }
 
 
@@ -36,9 +39,15 @@ void Image_Processing_Class::resetPar()
 
 void Image_Processing_Class::generalProcess()
 {
-    usrtimer.start();
     if (img_input1.empty() || !ipcMutex.tryLock())
         return;
+    usrtimer.start();
+
+//    current_date_time =QDateTime::currentDateTime();
+//    save_count++;
+//    qDebug()<<save_count<<" image process start time: "
+//           <<current_date_time.toString("hh_mm_ss_zzz")<<Qt::endl;
+
     if(img_input1.channels()==3)
         cvtColor(img_input1,img_output2,COLOR_RGB2GRAY);
     else
@@ -94,12 +103,17 @@ void Image_Processing_Class::generalProcess()
 
     emit outputImgProcessedRequest();
     onceRunTime = usrtimer.elapsed();
+
 //    cout<<"Current image process thread: "<<QThread::currentThreadId()<<endl;
-//    cout<<"Test OCL time: "<<onceRunTime<<" ms with ocl "<<onGPU<<endl;
+////    cout<<"Test OCL time: "<<onceRunTime<<" ms with ocl "<<onGPU<<endl;
+//    current_date_time =QDateTime::currentDateTime();
+//    qDebug()<<save_count<<" image process end time: "
+//           <<current_date_time.toString("hh_mm_ss_zzz")<<" used: "<<onceRunTime<<Qt::endl;
 }
 
 void Image_Processing_Class::startProcessOnce()
 {
+//    sched_setaffinity(0,sizeof(myCPU),&myCPU);
     switch (workCond) {
     case GeneralProcess:
     default:

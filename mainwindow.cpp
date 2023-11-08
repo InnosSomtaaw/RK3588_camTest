@@ -134,6 +134,8 @@ void MainWindow::initImageProcess()
                 imgProcHDR,&IMG_HDR::startProcessOnce);
         connect(imgProcHDR,&IMG_HDR::outputImgProcessedRequest,
                 this,&MainWindow::slotimagebox1Refresh);
+        connect(this,&MainWindow::startProcessor1Ini,
+                imgProcHDR,&IMG_HDR::iniImgProcessor);
         imgProcessor1=imgProcHDR;
         break;
     }
@@ -143,11 +145,11 @@ void MainWindow::initImageProcess()
                 imgProcRKNN,&RKNN_INFERENCER::startProcessOnce);
         connect(imgProcRKNN,&RKNN_INFERENCER::outputImgProcessedRequest,
                 this,&MainWindow::slotimagebox1Refresh);
+        connect(this,&MainWindow::startProcessor1Ini,
+                imgProcRKNN,&RKNN_INFERENCER::iniImgProcessor);
         QByteArray qba = proj_path.toLocal8Bit();
         imgProcRKNN->model_name=qba.data();
-        imgProcRKNN->iniImgProcessor();
-        if(imgProcRKNN->hasInited)
-            ui->buttonOpenAIProject->setEnabled(false);
+//        imgProcRKNN->iniImgProcessor();
         imgProcessor1=imgProcRKNN;
         break;
     }
@@ -160,24 +162,36 @@ void MainWindow::initImageProcess()
                 imgProcessor1,&Image_Processing_Class::startProcessOnce);
         connect(imgProcessor1,&Image_Processing_Class::outputImgProcessedRequest,
                 this,&MainWindow::slotimagebox1Refresh);
+        connect(this,&MainWindow::startProcessor1Ini,
+                imgProcessor1,&Image_Processing_Class::iniImgProcessor);
         break;
     }
     }
+    imgProcessor1->cpuNo=4;
+    CPU_ZERO(&imgProcessor1->myCPU);
+    CPU_SET(imgProcessor1->cpuNo,&imgProcessor1->myCPU);
     imgProThread1 = new QThread();
     imgProcessor1->moveToThread(imgProThread1);
     imgProThread1->start();
+    emit startProcessor1Ini();
 
     imgProcessor2=new Image_Processing_Class;
     imgProcessor2->workCond=workCond;
-    imgProcessor2->onGPU=true;
+    imgProcessor2->onGPU=false;
     ocl::setUseOpenCL(imgProcessor2->onGPU);
     connect(this,&MainWindow::startCam2Request,
             imgProcessor2,&Image_Processing_Class::startProcessOnce);
     connect(imgProcessor2,&Image_Processing_Class::outputImgProcessedRequest,
             this,&MainWindow::slotimagebox2Refresh);
+    connect(this,&MainWindow::startProcessor2Ini,
+            imgProcessor2,&Image_Processing_Class::iniImgProcessor);
+    imgProcessor2->cpuNo=6;
+    CPU_ZERO(&imgProcessor2->myCPU);
+    CPU_SET(imgProcessor2->cpuNo,&imgProcessor2->myCPU);
     imgProThread2 = new QThread();
     imgProcessor2->moveToThread(imgProThread2);
     imgProThread2->start();
+    emit startProcessor2Ini();
 }
 
 void MainWindow::initVideoPlayers()
@@ -188,25 +202,44 @@ void MainWindow::initVideoPlayers()
 //    connect(cam1,&VideoPlayer::sigGetOneFrame,
 //            this,&MainWindow::slotGetOneFrame1);
 
-    //数字相机类初始化（mpp读取）
-    cam1=new MPP_PLAYER;
-    cam1->camURL = urls[1];
-    connect(cam1,&MPP_PLAYER::sigGetOneFrame,
-            this,&MainWindow::slotGetOneFrame1);
+//    //数字相机类初始化（mpp读取）
+//    cam1=new MPP_PLAYER;
+//    cam1->camURL = urls[1];
+//    connect(cam1,&MPP_PLAYER::sigGetOneFrame,
+//            this,&MainWindow::slotGetOneFrame1);
 
     //数字相机类初始化（HIKVISION读取）
-    cam2=new CMvCamera;
-    if(m_stDevList.nDeviceNum<1)
+    if(m_stDevList.nDeviceNum<2)
         return;
+    cam1=new CMvCamera;
+    cam1->m_stDevList=m_stDevList;
+    cam1->nIndex=0;
+    cam1->froceRaw=false;
+    cam1->startCamera();
+    connect(cam1,&CMvCamera::sigGetOneFrame,
+            this,&MainWindow::slotGetOneFrame1);
+
+    cam2=new CMvCamera;
     cam2->m_stDevList=m_stDevList;
-    cam2->nIndex=0;
+    cam2->nIndex=1;
     cam2->froceRaw=false;
     cam2->startCamera();
     connect(cam2,&CMvCamera::sigGetOneFrame,
             this,&MainWindow::slotGetOneFrame2);
 
     //图像保存类初始化(mpp)
+    MVCC_INTVALUE_EX stIntValue;
+    memset(&stIntValue, 0, sizeof(MVCC_INTVALUE_EX));
+
     cmp1=new MPP_COMPRESSOR;
+    cmp1->camURL="cam1";
+
+    cam1->GetIntValue("Width",&stIntValue);
+    cmp1->width=stIntValue.nCurValue;
+    cam1->GetIntValue("Height",&stIntValue);
+    cmp1->height=stIntValue.nCurValue;
+    cmp1->startCamera();
+
     imgSavThread1 = new QThread();
     cmp1->moveToThread(imgSavThread1);
     imgSavThread1->start();
@@ -214,29 +247,32 @@ void MainWindow::initVideoPlayers()
             cmp1,&MPP_COMPRESSOR::getOneFrame);
     connect(cmp1,&MPP_COMPRESSOR::sigGetOneFrame,
             this,&MainWindow::slotimagebox3Refresh);
-    cmp1->camURL="cam1";
+    cmp1->cpuNo=2;
+    CPU_ZERO(&cmp1->myCPU);
+    CPU_SET(cmp1->cpuNo,&cmp1->myCPU);
 
     cmp2=new MPP_COMPRESSOR;
-    MVCC_INTVALUE_EX stIntValue;
-    memset(&stIntValue, 0, sizeof(MVCC_INTVALUE_EX));
+    cmp2->camURL="cam2";
     cam2->GetIntValue("Width",&stIntValue);
     cmp2->width=stIntValue.nCurValue;
     cam2->GetIntValue("Height",&stIntValue);
     cmp2->height=stIntValue.nCurValue;
-    cmp2->camURL="cam2";
     cmp2->startCamera();
     imgSavThread2 = new QThread();
     cmp2->moveToThread(imgSavThread2);
     imgSavThread2->start();
     connect(this,&MainWindow::saveCam2Request,
             cmp2,&MPP_COMPRESSOR::getOneFrame);
+    cmp2->cpuNo=3;
+    CPU_ZERO(&cmp2->myCPU);
+    CPU_SET(cmp2->cpuNo,&cmp2->myCPU);
 }
 
 void MainWindow::initBaseSettings()
 {
     isDetecting=false;
     detecOnly1st=false;detecOnly2nd=false;
-    QThreadPool::globalInstance()->setMaxThreadCount(6);
+    QThreadPool::globalInstance()->setMaxThreadCount(10);
     ui->labelServerPort->setText("ServerPort: "+QString::number(serverPort)+" ");
     tcpServer = new QTcpServer(this);
     tcpServer->listen(QHostAddress::Any,serverPort);
@@ -254,6 +290,8 @@ void MainWindow::initBaseSettings()
 
 void MainWindow::initTextBrowsers()
 {
+    fps1=0;
+    fps2=0;
     ui->textBrowser1->setStyleSheet("background:transparent;border-width:0;border-style:outset");
     ui->textBrowser2->setStyleSheet("background:transparent;border-width:0;border-style:outset");
 
@@ -503,11 +541,11 @@ void MainWindow::on_buttonStartCapture_clicked()
         cam2->isCapturing=true;
         ui->buttonStartCapture->setText("StopCapture");
 
-        if(!cam1->hasStarted)
-            cam1->startCamera();
-        else
-            cam1->camMutex.unlock();
-
+//        if(!cam1->hasStarted)
+//            cam1->startCamera();
+//        else
+//            cam1->camMutex.unlock();
+        cam1->StartGrabbing();
         cam2->StartGrabbing();
     }
     else if(ui->buttonStartCapture->text()=="StopCapture")
@@ -517,7 +555,8 @@ void MainWindow::on_buttonStartCapture_clicked()
 
         ui->buttonStartCapture->setText("StartCapture");
 
-        cam1->camMutex.tryLock();
+//        cam1->camMutex.tryLock();
+        cam1->StopGrabbing();
         cam2->StopGrabbing();
     }
 }
@@ -542,8 +581,8 @@ void MainWindow::slotimagebox1Refresh()
             "ms. In which process consumed: "+QString::number(imgProcessor1->onceRunTime)+
             "ms.\n";
     strOutput1+=tempStr;
-    double fps=1000/double(gap2recv);
-    tempStr="1st camera FPS(processed): "+QString::number(fps,'f',1)+".\n";
+    fps1=1000/double(gap2recv);
+    tempStr="1st camera FPS(processed): "+QString::number(fps1,'f',1)+".\n";
     strOutput1+=tempStr;
     ui->textBrowser1->setText(strOutput1);
     strOutput1.clear();
@@ -574,8 +613,8 @@ void MainWindow::slotimagebox2Refresh()
             "): "+QString::number(gap2recv)+"ms. In which process consumed: "+
             QString::number(imgProcessor2->onceRunTime)+"ms.\n";
     strOutput2+=tempStr;
-    double fps=1000/double(gap2recv);
-    tempStr="2nd camera FPS(processed): "+QString::number(fps,'f',1)+".\n";
+    fps2=1000/double(gap2recv);
+    tempStr="2nd camera FPS(processed): "+QString::number(fps2,'f',1)+".\n";
     strOutput2+=tempStr;
     ui->textBrowser2->setText(strOutput2);
     strOutput2.clear();
@@ -631,13 +670,13 @@ void MainWindow::slotGetOneFrame1(QImage img)
 
     if(ui->checkBoxSaving->isChecked())
     {
-        if(!cmp1->hasStarted)
-        {
-            cmp1->width=img.width();
-            cmp1->height=img.height();
-            cmp1->startCamera();
-        }
-        else
+//        if(!cmp1->hasStarted)
+//        {
+//            cmp1->width=img.width();
+//            cmp1->height=img.height();
+//            cmp1->startCamera();
+//        }
+//        else
         {
             if(cmp1->camMutex.tryLock())
             {

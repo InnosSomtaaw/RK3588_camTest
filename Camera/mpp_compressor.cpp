@@ -26,10 +26,10 @@ void MPP_COMPRESSOR::startCamera()
     enc_params.height = height;
     enc_params.fmt = MPP_FMT_YUV420SP;
     enc_params.type = MPP_VIDEO_CodingHEVC;
-    enc_params.fps_out_num=30;
 //    enc_params.type = MPP_VIDEO_CodingMJPEG;
-//    enc_params.fps_out_num=1;
+//    enc_params.fps_out_num=60;
 //    enc_params.fps_out_den=5000;
+    enc_params.bps_max=enc_params.width*enc_params.height*480;
 
     //Align to 16
     width_stride=(width+16-1)&~(16-1);
@@ -59,6 +59,7 @@ void MPP_COMPRESSOR::startCamera()
     if (!dir.exists(dir_str))
         dir.mkpath(dir_str);
     fn=dir_str+camURL+"_autosaved.h265";
+//    fn=dir_str+camURL+"_autosaved.mjpeg";
     qba = fn.toLocal8Bit();
     fp = fopen(qba.data(), "w");
     framNum=0;
@@ -68,18 +69,17 @@ void MPP_COMPRESSOR::startCamera()
 
 void MPP_COMPRESSOR::getOneFrame()
 {
+//    sched_setaffinity(0,sizeof(myCPU),&myCPU);
     bool lockfg1 = camMutex.tryLock();
     bool lockfg2 = encodeMutex.tryLock();
     if(!lockfg1 || !lockfg2)
     {
         if(lockfg1 && !lockfg2)
             camMutex.unlock();
-        if(lockfg2 && lockfg1)
+        if(lockfg2 && !lockfg1)
             encodeMutex.unlock();
         return;
     }
-//    if(!camMutex.tryLock() || !encodeMutex.tryLock())
-//        return;
     usrtimer1.start();
 
     if(img.format()!=QImage::Format_RGB888)
@@ -89,15 +89,10 @@ void MPP_COMPRESSOR::getOneFrame()
                                  width_stride,height_stride);
     dst = wrapbuffer_virtualaddr(mpp_frame_addr, width, height, RK_FORMAT_YCbCr_420_SP,
                                  width_stride,height_stride);
-//    STATUS = imcheck(src, dst, src_rect, dst_rect);
-//    if (IM_STATUS_NOERROR != STATUS) {
-//        camMutex.unlock();
-//        return;
-//    }
     STATUS = imcvtcolor(src, dst,RK_FORMAT_RGB_888,RK_FORMAT_YCbCr_420_SP,
                         IM_RGB_TO_YUV_BT601_FULL,0,&rfd);
-//        STATUS = imcvtcolor(src, dst,RK_FORMAT_RGB_888,RK_FORMAT_YCbCr_420_SP,
-//                            IM_RGB_TO_YUV_BT601_FULL);
+//    STATUS = imcvtcolor(src, dst,RK_FORMAT_RGB_888,RK_FORMAT_YCbCr_420_SP,
+//                        IM_RGB_TO_YUV_BT601_FULL);
     camMutex.unlock();
     encodeMutex.unlock();
 
@@ -105,27 +100,10 @@ void MPP_COMPRESSOR::getOneFrame()
               height<<"): "<<usrtimer1.elapsed()<<" ms."<<endl;
 //    cout<<"Current RGA cvtcolor thread: "<<QThread::currentThreadId()<<endl;
 
-//    if(STATUS!=IM_STATUS_SUCCESS)
-//        return;
-
     this->setAutoDelete(false);
     QThreadPool::globalInstance()->start(this);
-    return;
 
-//    STATUS=imsync(rfd);
-//    if(STATUS!=IM_STATUS_SUCCESS)
-//        return;
-////    //Encode to file
-//    enc_data_size = encoder->GetHeader(enc_data, enc_buf_size);
-//    fwrite(enc_data, 1, enc_data_size,fp);
-//    enc_data_size = encoder->Encode(mpp_frame, enc_data, enc_buf_size);
-//    fwrite(enc_data, 1, enc_data_size,fp);
-
-//    framNum++;
-//    cout<<"Encode time: "<<usrtimer1.elapsed()<<" ms."<<endl;
-
-//    cout<<"Save time(width:"<<width<<",height:"<<
-//              height<<"): "<<usrtimer1.elapsed()<<" ms."<<endl;
+//    run();
 }
 
 void MPP_COMPRESSOR::run()
@@ -144,6 +122,7 @@ void MPP_COMPRESSOR::run()
         encodeMutex.unlock();
         return;
     }
+
     //Encode to file
     enc_data_size = encoder->GetHeader(enc_data, enc_buf_size);
     fwrite(enc_data, 1, enc_data_size,fp);
@@ -152,6 +131,9 @@ void MPP_COMPRESSOR::run()
     cout<<"Encode time(width:"<<width<<",height:"<<
               height<<"): "<<usrtimer2.elapsed()<<" ms."<<endl;
 //    cout<<"Current encode thread: "<<QThread::currentThreadId()<<endl;
+    //    cout<<"Save time(width:"<<width<<",height:"<<
+    //              height<<"): "<<usrtimer1.elapsed()<<" ms."<<endl;
+
     encodeMutex.unlock();
 }
 

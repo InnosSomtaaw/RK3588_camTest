@@ -174,13 +174,21 @@ void RKNN_INFERENCER::iniImgProcessor()
     inputs[0].pass_through = 0;
 
     hasInited=true;
+
+//    qDebug()<<"RKNN Thread Id: "<<QThread::currentThreadId()<<Qt::endl;
 }
 
 void RKNN_INFERENCER::startProcessOnce()
 {
-    usrtimer.start();
+//    sched_setaffinity(0,sizeof(myCPU),&myCPU);
     if (!ipcMutex.tryLock())
         return;
+    usrtimer.start();
+
+//    save_count++;
+//    current_date_time =QDateTime::currentDateTime();
+//    qDebug()<<save_count<<" RKNN start time: "<<
+//              current_date_time.toString("hh_mm_ss_zzz")<<Qt::endl;
 
     img_input1.copyTo(img_output3);
     ipcMutex.unlock();
@@ -198,7 +206,7 @@ void RKNN_INFERENCER::startProcessOnce()
       resize(img_output1,img_output3,Size(height,width));
       inputs[0].buf = (void*)img_output3.data;
 
-//      printf("resize with RGA!\n");
+//      //printf("resize with RGA!\n");
 //      resize_buf = malloc(height * width * channel);
 //      memset(resize_buf, 0x00, height * width * channel);
 //      src = wrapbuffer_virtualaddr((void*)img_output1.data, img_width, img_height, RK_FORMAT_RGB_888);
@@ -249,9 +257,9 @@ void RKNN_INFERENCER::startProcessOnce()
     char text[256];
     for (int i = 0; i < detect_result_group.count; i++) {
       detect_result_t* det_result = &(detect_result_group.results[i]);
-      sprintf(text, "%s %.1f%%", det_result->name, det_result->prop * 100);
-      printf("%s @ (%d %d %d %d) %f\n", det_result->name, det_result->box.left, det_result->box.top,
-             det_result->box.right, det_result->box.bottom, det_result->prop);
+//      sprintf(text, "%s %.1f%%", det_result->name, det_result->prop * 100);
+//      printf("%s @ (%d %d %d %d) %f\n", det_result->name, det_result->box.left, det_result->box.top,
+//             det_result->box.right, det_result->box.bottom, det_result->prop);
       int x1 = det_result->box.left;
       int y1 = det_result->box.top;
       int x2 = det_result->box.right;
@@ -266,7 +274,12 @@ void RKNN_INFERENCER::startProcessOnce()
       free(resize_buf);
 
     //    cout<<"Time of Once Run(ms): "<<
-    //        usrtimer.elapsed()<<endl;   
-//    cout<<"Current RKNN infer thread: "<<QThread::currentThreadId()<<endl;
+    //        usrtimer.elapsed()<<endl;
+
     onceRunTime=usrtimer.elapsed();
+
+//    cout<<"Current RKNN infer thread: "<<QThread::currentThreadId()<<endl;
+//    current_date_time =QDateTime::currentDateTime();
+//    qDebug()<<save_count<<" RKNN end time: "<<current_date_time.toString("hh_mm_ss_zzz")
+//           <<" used: "<<onceRunTime<<Qt::endl;
 }

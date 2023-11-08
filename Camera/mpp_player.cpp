@@ -31,7 +31,7 @@ void MPP_PLAYER::startCamera()
     QByteArray qba = camURL.toLocal8Bit();
     const char *video_name=qba.data();
 
-    decoder->Init(video_type, 30 ,(void *)this);
+    decoder->Init(video_type, 25 ,(void *)this);
     decoder->SetCallback(mpp_decoder_frame_callback);
 
     printf("app_ctx=%p decoder=%p\n", this, &this->decoder);

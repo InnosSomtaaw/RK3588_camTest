@@ -1,6 +1,8 @@
 #ifndef IMAGE_PROCESSING_CLASS_H
 #define IMAGE_PROCESSING_CLASS_H
 
+#include <sched.h>
+
 #include <QObject>
 #include <QMutex>
 #include <QQueue>
@@ -11,6 +13,9 @@
 #include <QThread>
 #include <QThreadPool>
 #include <QElapsedTimer>
+
+#include <qdatetime.h>
+#include <QDebug>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/ocl.hpp>
@@ -42,14 +47,13 @@ public:
     void run() override;
 };
 
-
 //图像处理类
 class Image_Processing_Class : public QObject
 {
     Q_OBJECT
 public:
      Image_Processing_Class();
-    ~Image_Processing_Class();
+    ~Image_Processing_Class();   
 
 signals:
     //刷新主窗体显示后图片信号
@@ -97,6 +101,10 @@ public:
 
     //计时器
     QElapsedTimer usrtimer;
+    QDateTime current_date_time;
+
+    cpu_set_t myCPU;
+    int cpuNo;
 
     //处理图片组
     bool processFilePic();
